@@ -1,10 +1,10 @@
 # Kood/Messenger
 
 ## Project Overview
-Kood/Messenger is a secure, real-time messaging platform designed for both Web and Mobile. It features a robust Node.js backend using Sequelize with SQLite, and a cross-platform frontend built with Flutter. The application prioritizes privacy through end-to-end encryption of sensitive data (messages, profile information, and chat details) before storage.
+Kood/Messenger is a secure, real-time web messaging platform. It features a robust Node.js backend using Sequelize with SQLite, and a premium frontend built with Flutter web. The application prioritizes privacy through end-to-end encryption of sensitive data (messages, profile information, and chat details) before storage.
 
 ### Key Features
-- **Real-time Messaging**: Instant text, image, and video delivery via Socket.io.
+- **Real-time Web Messaging**: Instant text, image, and video delivery via Socket.io.
 - **Security**: AES-256-CBC encryption for all sensitive user data.
 - **Authentication**: Secure JWT-based login, 6-digit email verification, and password reset flow.
 - **Profile Management**: Customizable profiles with "About Me" sections and avatar uploads.
@@ -13,14 +13,14 @@ Kood/Messenger is a secure, real-time messaging platform designed for both Web a
 
 ---
 
-## Setup Instructions
+## Setup Instructions (Web Testing)
 
 ### Prerequisites
 - **Node.js** (v16+)
-- **Flutter SDK**
-- **SQLite3**
+- **Flutter SDK** (configured for Web)
+- **Google Chrome** (Recommended for testing)
 
-### Backend Setup
+### 1. Backend Setup
 1. Navigate to the `backend/` directory:
    ```bash
    cd backend
@@ -29,39 +29,33 @@ Kood/Messenger is a secure, real-time messaging platform designed for both Web a
    ```bash
    npm install
    ```
-3. (Optional) Configure environment variables in a `.env` file:
-   ```env
-   PORT=3000
-   JWT_SECRET=your_jwt_secret
-   ENCRYPTION_KEY=your_32_byte_key
-   ```
-4. Start the server:
+3. Start the server (default port 3000):
    ```bash
    npm start
    ```
 
-### Frontend Setup (Web)
-1. Navigate to the `frontend/` directory:
+### 2. Frontend Setup (Web)
+1. Open a new terminal and navigate to the `frontend/` directory:
    ```bash
    cd frontend
    ```
-2. Install Flutter dependencies:
+2. Install dependencies:
    ```bash
    flutter pub get
    ```
-3. Run the application for Web:
+3. Launch the Web app:
    ```bash
    flutter run -d chrome
    ```
 
 ---
 
-## Usage Guide
+## Web Testing Guide
 
 ### Getting Started
-1. **Registration**: Create a new account using a valid email, username, and password.
-2. **Verification**: Enter the 6-digit code sent to your email (displayed in the backend console for local development).
-3. **Login**: Use your credentials to access your persistent session.
+1. **Registration**: Create a new account. Note that for testing, the **6-digit verification code** will be printed to your **Backend Terminal**.
+2. **Login**: Use your verified credentials. The session will persist until you logout.
+3. **Multi-Session Test**: Open Chrome in Incognito mode (or use another browser) to log in with a different account and test real-time interaction between two web windows.
 
 ### Messaging
 - **Find Contacts**: Use the search bar to find users by email or username.
