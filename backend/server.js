@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
 // Database Sync
 const { User, Chat, Message, Participant, Invite } = require('./models');
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {

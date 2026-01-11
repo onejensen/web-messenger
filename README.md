@@ -29,7 +29,8 @@ Kood/Messenger is a secure, real-time web messaging platform. It features a robu
    ```bash
    npm install
    ```
-3. Start the server (default port 3000):
+3. Configure the `.env` file (see [Configuration](#configuration) below).
+4. Start the server (runs on port **4000**):
    ```bash
    npm start
    ```
@@ -50,12 +51,34 @@ Kood/Messenger is a secure, real-time web messaging platform. It features a robu
 
 ---
 
+## Configuration
+
+The application requires a `.env` file in the `backend/` directory with the following variables:
+
+```env
+JWT_SECRET=your_jwt_secret
+PORT=4000
+
+# Gmail SMTP Configuration (Recommended)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=465
+EMAIL_USER=your_gmail@gmail.com
+EMAIL_PASS=your_app_password
+EMAIL_FROM="Kood/Messenger <your_gmail@gmail.com>"
+```
+
+> [!TIP]
+> Use a Gmail "App Password" for `EMAIL_PASS` if you have 2FA enabled.
+
+---
+
 ## Web Testing Guide
 
 ### Getting Started
-1. **Registration**: Create a new account. Note that for testing, the **6-digit verification code** will be printed to your **Backend Terminal**.
-2. **Login**: Use your verified credentials. The session will persist until you logout.
-3. **Multi-Session Test**: Open Chrome in Incognito mode (or use another browser) to log in with a different account and test real-time interaction between two web windows.
+1. **Registration**: Create a new account with a real email. A **6-digit verification code** will be sent to your email address.
+2. **Verification**: Enter the code in the app to activate your account.
+3. **Login**: Use your verified credentials. The session will persist until you logout.
+4. **Multi-Session Test**: Open Chrome in Incognito mode to log in with a different account and test real-time interaction.
 
 ### Messaging
 - **Find Contacts**: Use the search bar to find users by email or username.

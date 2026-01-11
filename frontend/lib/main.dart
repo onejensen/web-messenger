@@ -24,6 +24,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'Kood/Messenger',
         theme: ThemeData.dark().copyWith(
           primaryColor: Colors.deepPurpleAccent,
