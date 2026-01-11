@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const crypto = require('crypto');
 const authMiddleware = require('../middleware/authMiddleware');
+const { sendVerificationEmail } = require('../utils/mailer');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_123';
 
@@ -30,6 +31,15 @@ router.post('/register', async (req, res) => {
       password: hashedPassword,
       verificationToken
     });
+
+    console.log(`Verification code for ${email}: ${verificationToken}`);
+
+    try {
+      await sendVerificationEmail(email, verificationToken);
+    } catch (mailErr) {
+      console.error('Error sending verification email:', mailErr);
+      // We still return 201 because the user is created, but we log the error
+    }
 
     res.status(201).json({ message: 'User registered. Please verify your email.', code: verificationToken });
   } catch (err) {
