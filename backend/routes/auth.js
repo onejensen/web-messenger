@@ -45,12 +45,12 @@ router.post('/register', async (req, res) => {
     });
 
     // Send Real Email
-    try {
-      await sendVerificationEmail(email, verificationCode);
-    } catch (err) {
-      console.error('Initial email send failed:', err);
-      // We don't fail registration if email fails, user can "resend" later
-    }
+    console.log(`Verification code for ${email}: ${verificationCode}`); // Log for Render console
+    // Send Real Email (Non-blocking to avoid frontend timeout)
+    console.log(`Verification code for ${email}: ${verificationCode}`);
+    sendVerificationEmail(email, verificationCode).catch(err => {
+      console.error('Background email send failed:', err);
+    });
 
     res.status(201).json({ 
       message: 'User registered. Please check your email for the verification code.',
@@ -120,7 +120,10 @@ router.post('/resend-verification', async (req, res) => {
     user.verificationCode = newCode;
     await user.save();
 
-    await sendVerificationEmail(email, newCode);
+    console.log(`New verification code for ${email}: ${newCode}`);
+    sendVerificationEmail(email, newCode).catch(err => {
+      console.error('Background email resend failed:', err);
+    });
     res.json({ message: 'New verification code sent' });
   } catch (err) {
     res.status(500).json({ error: err.message });
