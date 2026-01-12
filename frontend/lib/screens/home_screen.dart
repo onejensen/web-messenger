@@ -427,7 +427,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ],
                 ),
                 title: Text(chatName),
-                subtitle: Text(chat['lastMessageAt'] != null ? 'Last active: ${chat['lastMessageAt'].toString().substring(0, 10)}' : 'No messages'),
+                subtitle: Text(chat['lastMessageAt'] != null 
+                  ? 'Last active: ${chat['lastMessageAt'].toString().substring(0, 16).replaceAll('T', ' ')}' 
+                  : 'No messages'),
                 trailing:  (!isArchivedList && chat['unreadCount'] != null && chat['unreadCount'] > 0) 
                    ? Container(
                        padding: const EdgeInsets.all(8),

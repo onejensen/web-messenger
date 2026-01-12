@@ -89,10 +89,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                child: Consumer<AuthProvider>(
                  builder: (ctx, auth, _) {
                    // Add timestamp to bust cache
-                   final picUrl = auth.user?['profilePicture'];
-                   final fullUrl = picUrl != null 
-                      ? '${Config.baseUrl}/$picUrl?v=${DateTime.now().millisecondsSinceEpoch}' 
-                      : null;
+                    final picUrl = auth.user?['profilePicture'];
+                    final bool hasPic = picUrl != null && picUrl.isNotEmpty && picUrl != 'null';
+                    final fullUrl = hasPic 
+                       ? '${Config.baseUrl}/$picUrl?v=${DateTime.now().millisecondsSinceEpoch}' 
+                       : null;
                    
                     ImageProvider bgImage;
                     if (_imageBytes != null) {

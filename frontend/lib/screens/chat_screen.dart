@@ -101,6 +101,16 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   void _jumpToResult(int index) {
     if (index < 0 || index >= _searchResults.length) return;
     // Simple estimate for scroll position. In a real app with variable heights, 
@@ -277,6 +287,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(msg['User']['username'], style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                          const SizedBox(width: 8),
+                          Text(
+                            msg['createdAt'] != null 
+                              ? msg['createdAt'].toString().substring(11, 16) 
+                              : '',
+                            style: const TextStyle(fontSize: 10, color: Colors.white54),
+                          ),
                           if(isMe) ...[
                             const SizedBox(width: 4),
                             Builder(
@@ -387,8 +404,11 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: Consumer<ChatProvider>(
-              builder: (ctx, chatProvider, _) {
-                 return ListView.builder(
+                builder: (ctx, chatProvider, _) {
+                  if (chatProvider.messages.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                  }
+                  return ListView.builder(
                   controller: _scrollController,
                   itemCount: chatProvider.messages.length,
                   itemBuilder: (ctx, i) {
