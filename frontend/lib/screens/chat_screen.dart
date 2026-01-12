@@ -15,8 +15,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ChatScreen extends StatefulWidget {
   final int chatId;
   final String title;
+  final bool isGroup;
 
-  const ChatScreen({super.key, required this.chatId, required this.title});
+  const ChatScreen({super.key, required this.chatId, required this.title, this.isGroup = false});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -346,7 +347,15 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           )
         : AppBar(
-            title: Text(widget.title),
+            title: Row(
+              children: [
+                if (widget.isGroup) ...[
+                  const Icon(Icons.group, size: 20),
+                  const SizedBox(width: 8),
+                ],
+                Text(widget.title),
+              ],
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.search),

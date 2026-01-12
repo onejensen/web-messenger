@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   ChatProvider? _chatProvider;
   int? _selectedChatId;
   String? _activeTitle;
+  bool _isSelectedChatGroup = false;
 
   @override
   void initState() {
@@ -125,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     key: ValueKey('chat_$_selectedChatId'),
                     chatId: _selectedChatId!,
                     title: _activeTitle ?? 'Chat',
+                    isGroup: _isSelectedChatGroup,
                   ),
           ),
         ],
@@ -383,10 +385,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 }
               },
               child: ListTile(
-                leading: CircleAvatar(
-                   backgroundImage: (chat['isGroup'] == true || displayUser['profilePicture'] == null)
-                      ? const AssetImage('assets/images/defaultProfile.jpg') as ImageProvider
-                      : NetworkImage('${Config.baseUrl}/${displayUser['profilePicture']}'),
+                leading: Stack(
+                  children: [
+                    CircleAvatar(
+                      backgroundImage: (chat['isGroup'] == true || displayUser['profilePicture'] == null)
+                          ? const AssetImage('assets/images/defaultProfile.jpg') as ImageProvider
+                          : NetworkImage('${Config.baseUrl}/${displayUser['profilePicture']}'),
+                    ),
+                    if (chat['isGroup'] == true)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.deepPurpleAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.group, size: 12, color: Colors.white),
+                        ),
+                      ),
+                  ],
                 ),
                 title: Text(chatName),
                 subtitle: Text(chat['lastMessageAt'] != null ? 'Last active: ${chat['lastMessageAt'].toString().substring(0, 10)}' : 'No messages'),
@@ -404,11 +423,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         MaterialPageRoute(
                             builder: (_) => ChatScreen(
                                 chatId: chat['id'],
-                                title: chatName)));
+                                title: chatName,
+                                isGroup: chat['isGroup'] == true)));
                   } else {
                     setState(() {
                       _selectedChatId = chat['id'];
                       _activeTitle = chatName;
+                      _isSelectedChatGroup = chat['isGroup'] == true;
                     });
                   }
                 },
