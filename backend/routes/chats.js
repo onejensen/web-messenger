@@ -86,6 +86,9 @@ router.post('/', verifyToken, async (req, res) => {
 // Create Group Chat
 router.post('/group', verifyToken, async (req, res) => {
     try {
+        const { groupName, userIds } = req.body;
+        if(!groupName) return res.status(400).json({ error: 'Group name required' });
+        
         console.log(`Backend: Creating group "${groupName}" with creator ${req.user.id} and invited users: ${userIds.join(', ')}`);
         const chat = await Chat.create({ isGroup: true, name: groupName });
         // Add creator immediately
