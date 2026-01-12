@@ -213,12 +213,23 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  Future<void> deleteMessage(int msgId) async {
+  Future<void> deleteMessage(dynamic msgId) async {
+    // If it's an optimistic message (temp ID), just remove it locally
+    if (msgId.toString().startsWith('temp_')) {
+      debugPrint('ChatProvider: Removing optimistic message $msgId locally');
+      _messages.removeWhere((m) => m['id'].toString() == msgId.toString());
+      notifyListeners();
+      return;
+    }
+
+    if (_currentChatId == null) return;
+    final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
+    
     try {
-      await _chatService.deleteMessage(_currentChatId!, msgId);
-      // Wait for socket delete_message
+      await _chatService.deleteMessage(_currentChatId!, int.parse(msgId.toString()));
     } catch (e) {
-      print(e);
+      debugPrint('ChatProvider: Failed to delete message $msgId: $e');
       rethrow;
     }
   }
@@ -343,10 +354,11 @@ class ChatProvider with ChangeNotifier {
     
     // Optimistic Update
     final tempId = DateTime.now().millisecondsSinceEpoch;
-    final optimisticMsg = {
+    final tempMsg = {
       'id': 'temp_$tempId',
       'ChatId': _currentChatId,
-      'content': text,
+      'UserId': currentUser['id'],
+      'content': media != null ? media.path : (text ?? ''),
       'type': type,
       'status': 'sending',
       'createdAt': DateTime.now().toIso8601String(),
@@ -356,7 +368,7 @@ class ChatProvider with ChangeNotifier {
         'profilePicture': currentUser['profilePicture']
       }
     };
-    _messages.add(optimisticMsg);
+    _messages.add(tempMsg);
     notifyListeners();
 
     try {

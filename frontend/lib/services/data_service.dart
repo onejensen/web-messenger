@@ -140,7 +140,14 @@ class ChatService {
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
     if(response.statusCode == 200) return jsonDecode(response.body);
-    throw Exception('Failed to send message');
+    
+    // Attempt to extract detailed error from server
+    try {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to send message');
+    } catch (_) {
+      throw Exception('Failed to send message (Status: ${response.statusCode})');
+    }
   }
 
   Future<void> deleteChat(int id) async {

@@ -26,8 +26,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       debugPrint('VideoPlayerWidget: videoUrl is empty (pending upload)');
       return;
     }
+    final isAbsolute = widget.videoUrl.startsWith('http') || widget.videoUrl.startsWith('blob:');
+    final finalUrl = isAbsolute ? widget.videoUrl : '${Config.baseUrl}/${widget.videoUrl}';
+    
     _videoPlayerController = VideoPlayerController.networkUrl(
-      Uri.parse('${Config.baseUrl}/${widget.videoUrl}'),
+      Uri.parse(finalUrl),
     );
     await _videoPlayerController.initialize();
     _chewieController = ChewieController(
@@ -62,9 +65,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
             aspectRatio: _videoPlayerController.value.aspectRatio,
             child: Chewie(controller: _chewieController!),
           )
-        : const SizedBox(
+        : Container(
             height: 200,
-            child: Center(child: CircularProgressIndicator()),
+            width: double.infinity,
+            color: Colors.black26,
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: Colors.white70),
+                SizedBox(height: 12),
+                Text(
+                  'Uploading video...',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
           );
   }
 }

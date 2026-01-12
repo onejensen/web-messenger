@@ -10,7 +10,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ 
     storage, 
-    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+    limits: { fileSize: 100 * 1024 * 1024 }, // Increase to 100MB for mobile videos
 });
 
 // Get Chats
@@ -151,8 +151,22 @@ router.get('/:id/messages', verifyToken, async (req, res) => {
     }
 });
 
-// Send Message
-router.post('/:id/messages', verifyToken, upload.single('media'), async (req, res) => {
+// Send Message with Multer error handling
+router.post('/:id/messages', verifyToken, (req, res, next) => {
+    upload.single('media')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            console.error(`Backend: Multer Error during upload: ${err.code} - ${err.message}`);
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: 'File too large. Maximum size is 100MB.' });
+            }
+            return res.status(400).json({ error: `Upload error: ${err.message}` });
+        } else if (err) {
+            console.error(`Backend: Unknown upload error: ${err.message}`);
+            return res.status(500).json({ error: 'Failed to upload file.' });
+        }
+        next();
+    });
+}, async (req, res) => {
     try {
         const { content, type } = req.body; 
         console.log(`Backend: Received message for Chat ${req.params.id} from User ${req.user.id}: ${content}`);
