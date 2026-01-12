@@ -12,9 +12,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Keep it simple for now or use [ "http://localhost:3000", "https://onejensen.github.io" ]
-    methods: ["GET", "POST"]
-  }
+    origin: "*", 
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
 
 // Sidebar: Create uploads directory
@@ -37,19 +39,26 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   
-  // Auto-identify via token in headers
+  // Auto-identify via token in headers OR handshake.auth (better for Web)
   const authHeader = socket.handshake.headers['authorization'];
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+  const authToken = socket.handshake.auth ? socket.handshake.auth.token : null;
+  
+  const token = (authHeader && authHeader.startsWith('Bearer ')) 
+    ? authHeader.split(' ')[1] 
+    : authToken;
+
+  if (token) {
       try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
           const userId = decoded.id;
-          socket.userId = userId; // Store for convenience
+          socket.userId = userId; 
           socket.join(`user_${userId}`);
           console.log(`Socket ${socket.id} auto-joined room: user_${userId}`);
       } catch (e) {
           console.log('Socket connection auth failed:', e.message);
       }
+  } else {
+      console.log(`Socket ${socket.id} connected without token (waiting for identify)`);
   }
 
   socket.on('join_chat', (chatId) => {
