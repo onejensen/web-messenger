@@ -163,6 +163,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           // Exposed buttons for Desktop
           _buildInviteButton(context),
           IconButton(
+            icon: const Icon(Icons.group_add),
+            tooltip: 'New Group',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CreateGroupScreen())),
+          ),
+          IconButton(
             icon: const Icon(Icons.person),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const ProfileScreen())),
@@ -174,7 +180,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            onPressed: () => auth.logout(),
+            onPressed: () {
+               showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Confirm Logout'),
+                  content: const Text('Are you sure you want to log out?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        auth.logout();
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      child: const Text('Logout'),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ] else ...[
           // Popup Menu for Mobile to avoid overflow
@@ -192,7 +217,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               } else if (value == 'profile') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
               } else if (value == 'logout') {
-                auth.logout();
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Confirm Logout'),
+                    content: const Text('Are you sure you want to log out?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          auth.logout();
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                        child: const Text('Logout'),
+                      ),
+                    ],
+                  ),
+                );
               }
             },
             itemBuilder: (context) => [
@@ -200,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 value: 'group',
                 child: ListTile(
                   leading: Icon(Icons.group_add),
-                  title: Text('Nuevo Grupo'),
+                  title: const Text('New Group'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -208,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 value: 'profile',
                 child: ListTile(
                   leading: Icon(Icons.person),
-                  title: Text('Perfil'),
+                  title: const Text('Profile'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -216,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.exit_to_app, color: Colors.redAccent),
-                  title: Text('Cerrar sesión', style: TextStyle(color: Colors.redAccent)),
+                  title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -275,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             final userId = currentUser?['id'];
             final otherUser = chat['Users'].firstWhere((u) => u['id'] != userId, orElse: () => chat['Users'][0]);
             final displayUser = otherUser;
+            final chatName = chat['isGroup'] == true ? (chat['name'] ?? 'Group') : (displayUser['username'] ?? 'Chat');
             
             return Dismissible(
               key: Key('${isArchivedList?'archived':'active'}_${chat['id']}'),
@@ -341,11 +384,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               },
               child: ListTile(
                 leading: CircleAvatar(
-                   backgroundImage: displayUser['profilePicture'] != null 
-                      ? NetworkImage('${Config.baseUrl}/${displayUser['profilePicture']}') 
-                      : const AssetImage('assets/images/defaultProfile.jpg') as ImageProvider,
+                   backgroundImage: (chat['isGroup'] == true || displayUser['profilePicture'] == null)
+                      ? const AssetImage('assets/images/defaultProfile.jpg') as ImageProvider
+                      : NetworkImage('${Config.baseUrl}/${displayUser['profilePicture']}'),
                 ),
-                title: Text(displayUser['username']),
+                title: Text(chatName),
                 subtitle: Text(chat['lastMessageAt'] != null ? 'Last active: ${chat['lastMessageAt'].toString().substring(0, 10)}' : 'No messages'),
                 trailing:  (!isArchivedList && chat['unreadCount'] != null && chat['unreadCount'] > 0) 
                    ? Container(
@@ -361,11 +404,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         MaterialPageRoute(
                             builder: (_) => ChatScreen(
                                 chatId: chat['id'],
-                                title: displayUser['username'])));
+                                title: chatName)));
                   } else {
                     setState(() {
                       _selectedChatId = chat['id'];
-                      _activeTitle = displayUser['username'];
+                      _activeTitle = chatName;
                     });
                   }
                 },

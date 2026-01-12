@@ -131,21 +131,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                child: const Text('Change Password', style: TextStyle(color: Colors.blueAccent)),
              ),
              const Divider(height: 48),
-             SizedBox(
+              SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Provider.of<AuthProvider>(context, listen: false).logout();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Confirm Logout'),
+                        content: const Text('Are you sure you want to log out?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              Provider.of<AuthProvider>(context, listen: false).logout();
+                              Navigator.of(context).popUntil((route) => route.isFirst);
+                            }, 
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                            child: const Text('Logout'),
+                          ),
+                        ],
+                      ),
+                    );
                   }, 
                   icon: const Icon(Icons.logout, color: Colors.redAccent),
-                  label: const Text('Cerrar sesión', style: TextStyle(color: Colors.redAccent)),
+                  label: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.redAccent),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
-             ),
+              ),
            ],
          ),
        ),
@@ -156,41 +173,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final oldController = TextEditingController();
     final newController = TextEditingController();
     final confirmController = TextEditingController();
+    bool obscureOld = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Change Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: oldController, obscureText: true, decoration: const InputDecoration(labelText: 'Old Password')),
-            TextField(controller: newController, obscureText: true, decoration: const InputDecoration(labelText: 'New Password')),
-            TextField(controller: confirmController, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm New Password')),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Change Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: oldController, 
+                obscureText: obscureOld, 
+                decoration: InputDecoration(
+                  labelText: 'Old Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(obscureOld ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setDialogState(() => obscureOld = !obscureOld),
+                  ),
+                ),
+              ),
+              TextField(
+                controller: newController, 
+                obscureText: obscureNew, 
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(obscureNew ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                  ),
+                ),
+              ),
+              TextField(
+                controller: confirmController, 
+                obscureText: obscureConfirm, 
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(obscureConfirm ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (newController.text != confirmController.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+                  return;
+                }
+                try {
+                  final authService = AuthService();
+                  await authService.changePassword(oldController.text, newController.text);
+                  if (!mounted) return;
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                }
+              },
+              child: const Text('Update'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (newController.text != confirmController.text) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
-                return;
-              }
-              try {
-                final authService = AuthService();
-                await authService.changePassword(oldController.text, newController.text);
-                if (!mounted) return;
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
-              }
-            },
-            child: const Text('Update'),
-          ),
-        ],
       ),
     );
   }

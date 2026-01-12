@@ -55,11 +55,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   Future<void> _createGroup() async {
     if (_nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, introduce un nombre para el grupo')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a group name')));
       return;
     }
     if (_selectedUsers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona al menos un participante')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select at least one participant')));
       return;
     }
 
@@ -71,7 +71,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Grupo creado e invitaciones enviadas')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Group created and invitations sent')));
         context.read<ChatProvider>().loadChats();
       }
     } catch (e) {
@@ -87,14 +87,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Grupo'),
+        title: const Text('New Group'),
         actions: [
           if (_isCreating)
             const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
           else
             TextButton(
               onPressed: _createGroup,
-              child: const Text('CREAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('CREATE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
         ],
       ),
@@ -105,7 +105,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             child: TextField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Nombre del grupo',
+                labelText: 'Group name',
                 prefixIcon: Icon(Icons.group),
                 border: OutlineInputBorder(),
               ),
@@ -115,7 +115,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           if (_selectedUsers.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Align(alignment: Alignment.centerLeft, child: Text('Participantes seleccionados:', style: TextStyle(fontWeight: FontWeight.bold))),
+              child: Align(alignment: Alignment.centerLeft, child: Text('Selected participants:', style: TextStyle(fontWeight: FontWeight.bold))),
             ),
             SizedBox(
               height: 80,
@@ -159,7 +159,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             child: TextField(
               onChanged: _searchUsers,
               decoration: const InputDecoration(
-                hintText: 'Buscar participantes...',
+                hintText: 'Search participants...',
                 prefixIcon: Icon(Icons.search),
               ),
             ),
