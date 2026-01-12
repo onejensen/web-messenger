@@ -24,9 +24,13 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
+  final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
+  bool _isSearchMode = false;
+  List<int> _searchResults = [];
+  int _currentSearchResultIndex = -1;
   Timer? _typingTimer;
 
   @override
@@ -55,6 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _typingTimer?.cancel();
     Provider.of<ChatProvider>(context, listen: false).leaveChat();
     _controller.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -67,6 +72,45 @@ class _ChatScreenState extends State<ChatScreen> {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  void _performSearch(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _currentSearchResultIndex = -1;
+      });
+      return;
+    }
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final List<int> results = [];
+    for (int i = 0; i < chatProvider.messages.length; i++) {
+      final msg = chatProvider.messages[i];
+      if (msg['type'] == 'text' && msg['content'].toString().toLowerCase().contains(query.toLowerCase())) {
+        results.add(i);
+      }
+    }
+    setState(() {
+      _searchResults = results;
+      _currentSearchResultIndex = results.isNotEmpty ? results.length - 1 : -1;
+    });
+    if (results.isNotEmpty) {
+      _jumpToResult(_currentSearchResultIndex);
+    }
+  }
+
+  void _jumpToResult(int index) {
+    if (index < 0 || index >= _searchResults.length) return;
+    // Simple estimate for scroll position. In a real app with variable heights, 
+    // it's harder, but with itemExtent or similar it's easier. 
+    // For now we'll use a rough calculation based on index.
+    final targetIndex = _searchResults[index];
+    final position = targetIndex * 80.0; // Rough estimate per bubble
+    _scrollController.animateTo(
+      position,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> _sendMessage({String? text, XFile? file, String type = 'text'}) async {
@@ -149,7 +193,48 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Widget _buildMessage(dynamic msg, bool isMe) {
+  Widget _buildMessage(dynamic msg, bool isMe, String? query) {
+    Widget content;
+    if (msg['type'] == 'text') {
+      final text = msg['content'].toString();
+      if (query != null && query.isNotEmpty && text.toLowerCase().contains(query.toLowerCase())) {
+        final List<TextSpan> spans = [];
+        final lowercaseText = text.toLowerCase();
+        final lowercaseQuery = query.toLowerCase();
+        int start = 0;
+        int indexOfMatch;
+        while ((indexOfMatch = lowercaseText.indexOf(lowercaseQuery, start)) != -1) {
+          if (indexOfMatch > start) {
+            spans.add(TextSpan(text: text.substring(start, indexOfMatch)));
+          }
+          spans.add(TextSpan(
+            text: text.substring(indexOfMatch, indexOfMatch + query.length),
+            style: const TextStyle(backgroundColor: Colors.yellow, color: Colors.black),
+          ));
+          start = indexOfMatch + query.length;
+        }
+        if (start < text.length) {
+          spans.add(TextSpan(text: text.substring(start)));
+        }
+        content = RichText(text: TextSpan(children: spans, style: const TextStyle(color: Colors.white)));
+      } else {
+        content = Text(text);
+      }
+    } else if (msg['type'] == 'image') {
+      content = Builder(
+        builder: (context) {
+          final url = '${Config.baseUrl}/${msg['content']}';
+          return Image.network(url, errorBuilder: (c, e, s) => const Icon(Icons.broken_image));
+        },
+      );
+    } else if (msg['type'] == 'video') {
+      content = VideoPlayerWidget(videoUrl: msg['content']);
+    } else if (msg['type'] == 'audio') {
+      content = AudioPlayerWidget(audioUrl: msg['content'], isMe: isMe);
+    } else {
+      content = const SizedBox.shrink();
+    }
+
     return GestureDetector(
       onLongPress: isMe ? () {
          showModalBottomSheet(
@@ -184,15 +269,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                      if(msg['type'] == 'text') Text(msg['content']),
-                      if(msg['type'] == 'image') Builder(
-                        builder: (context) {
-                          final url = '${Config.baseUrl}/${msg['content']}';
-                          return Image.network(url, errorBuilder: (c,e,s) => const Icon(Icons.broken_image));
-                        }
-                      ),
-                      if(msg['type'] == 'video') VideoPlayerWidget(videoUrl: msg['content']),
-                      if(msg['type'] == 'audio') AudioPlayerWidget(audioUrl: msg['content'], isMe: isMe),
+                      content,
                       const SizedBox(height: 4),
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -200,10 +277,18 @@ class _ChatScreenState extends State<ChatScreen> {
                           Text(msg['User']['username'], style: const TextStyle(fontSize: 10, color: Colors.white54)),
                           if(isMe) ...[
                             const SizedBox(width: 4),
-                            Icon(
-                              msg['status'] == 'read' ? Icons.done_all : Icons.done,
-                              size: 12,
-                              color: msg['status'] == 'read' ? Colors.blue : Colors.white54,
+                            Builder(
+                              builder: (context) {
+                                if (msg['status'] == 'read') {
+                                  return const Icon(Icons.done_all, size: 12, color: Colors.blue);
+                                } else if (msg['status'] == 'delivered') {
+                                  return const Icon(Icons.done_all, size: 12, color: Colors.white54);
+                                } else if (msg['status'] == 'sending') {
+                                  return const Icon(Icons.access_time, size: 12, color: Colors.white54);
+                                } else {
+                                  return const Icon(Icons.done, size: 12, color: Colors.white54);
+                                }
+                              }
                             ),
                           ]
                         ],
@@ -218,13 +303,62 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: _isSearchMode 
+        ? AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => setState(() {
+                _isSearchMode = false;
+                _searchController.clear();
+                _searchResults = [];
+                _currentSearchResultIndex = -1;
+              }),
+            ),
+            title: TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'Search messages...', border: InputBorder.none),
+              style: const TextStyle(color: Colors.white),
+              onChanged: _performSearch,
+            ),
+            actions: [
+              if (_searchResults.isNotEmpty) ...[
+                Center(child: Text('${_currentSearchResultIndex + 1}/${_searchResults.length}')),
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_up),
+                  onPressed: () {
+                    setState(() {
+                      if (_currentSearchResultIndex > 0) _currentSearchResultIndex--;
+                    });
+                    _jumpToResult(_currentSearchResultIndex);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_down),
+                  onPressed: () {
+                    setState(() {
+                      if (_currentSearchResultIndex < _searchResults.length - 1) _currentSearchResultIndex++;
+                    });
+                    _jumpToResult(_currentSearchResultIndex);
+                  },
+                ),
+              ]
+            ],
+          )
+        : AppBar(
+            title: Text(widget.title),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () => setState(() => _isSearchMode = true),
+              ),
+            ],
+          ),
       body: Column(
         children: [
           Expanded(
             child: Consumer<ChatProvider>(
               builder: (ctx, chatProvider, _) {
-                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                  return ListView.builder(
                   controller: _scrollController,
                   itemCount: chatProvider.messages.length,
@@ -232,7 +366,7 @@ class _ChatScreenState extends State<ChatScreen> {
                      final msg = chatProvider.messages[i];
                      final currentUser = Provider.of<AuthProvider>(context, listen: false).user;
                      final isMe = currentUser != null && msg['User']['id'] == currentUser['id'];
-                     return _buildMessage(msg, isMe); 
+                     return _buildMessage(msg, isMe, _isSearchMode ? _searchController.text : null); 
                   },
                 );
               },

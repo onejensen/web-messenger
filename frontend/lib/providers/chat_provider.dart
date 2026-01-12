@@ -29,7 +29,10 @@ class ChatProvider with ChangeNotifier {
       'transports': ['websocket', 'polling'],
       'autoConnect': false,
       'forceNew': true, 
-      'auth': {'token': userToken}
+      'auth': {'token': userToken},
+      'reconnection': true,
+      'reconnectionAttempts': 10,
+      'reconnectionDelay': 2000,
     });
     _socket!.connect();
     
@@ -37,17 +40,31 @@ class ChatProvider with ChangeNotifier {
       debugPrint('ChatProvider: Socket Connected');
       _socket!.emit('identify', userId);
       
-      // Give the server a moment to join the personal room, then join chats
-      Future.delayed(const Duration(milliseconds: 500), () {
-          for(var chat in _chats) {
-            debugPrint('ChatProvider: Re-joining chat ${chat['id']}');
-            _socket!.emit('join_chat', chat['id']);
-          }
-      });
+      // Auto-rejoin rooms on reconnection
+      for(var chat in _chats) {
+        debugPrint('ChatProvider: Joining/Re-joining chat ${chat['id']}');
+        _socket!.emit('join_chat', chat['id']);
+      }
+      if(_currentChatId != null) {
+        _socket!.emit('join_chat', _currentChatId);
+      }
     });
 
-    _socket!.onDisconnect((_) => debugPrint('ChatProvider: Socket Disconnected'));
-    _socket!.onConnectError((err) => debugPrint('ChatProvider: Socket Connect Error: $err'));
+    _socket!.onReconnect((_) {
+      debugPrint('ChatProvider: Socket Reconnected');
+      loadChats(); // Refresh to ensure no messages were missed during downtime
+    });
+
+    _socket!.onDisconnect((reason) {
+      debugPrint('ChatProvider: Socket Disconnected. Reason: $reason');
+      if (reason == 'io server disconnect') {
+        _socket!.connect();
+      }
+    });
+
+    _socket!.onConnectError((err) {
+      debugPrint('ChatProvider: Socket Connect Error: $err');
+    });
 
     _socket!.on('new_invite', (data) {
       debugPrint('ChatProvider: Received new_invite: $data. Refreshing count...');
@@ -91,6 +108,12 @@ class ChatProvider with ChangeNotifier {
             _messages[existingIdx] = data;
             notifyListeners();
          }
+
+          // Acknowledge delivery if it's from someone else
+          if (data['UserId'].toString() != userId.toString()) {
+            debugPrint('ChatProvider: Acknowledging delivery of message ${data['id']}');
+            _socket!.emit('acknowledge_delivery', {'messageId': data['id'], 'chatId': data['ChatId']});
+          }
        }
        
        int idx = _chats.indexWhere((c) => c['id'].toString() == data['ChatId'].toString());

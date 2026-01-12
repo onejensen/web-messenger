@@ -9,7 +9,14 @@ const Chat = sequelize.define('Chat', {
   },
   name: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    get() {
+      const rawValue = this.getDataValue('name');
+      return rawValue ? decrypt(rawValue) : null;
+    },
+    set(value) {
+      if(value) this.setDataValue('name', encrypt(value));
+    }
   },
   lastMessageAt: {
     type: DataTypes.DATE,
@@ -66,7 +73,14 @@ const Invite = sequelize.define('Invite', {
   },
   groupName: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    get() {
+      const rawValue = this.getDataValue('groupName');
+      return rawValue ? decrypt(rawValue) : null;
+    },
+    set(value) {
+      if(value) this.setDataValue('groupName', encrypt(value));
+    }
   }
 });
 

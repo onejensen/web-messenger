@@ -94,6 +94,22 @@ io.on('connection', (socket) => {
      socket.to(String(chatId)).emit('stop_typing', { username, chatId });
   });
 
+  socket.on('acknowledge_delivery', async ({ messageId, chatId }) => {
+    try {
+      const msg = await Message.findByPk(messageId);
+      if (msg && msg.status === 'sent') {
+        msg.status = 'delivered';
+        await msg.save();
+        const fullMsg = await Message.findByPk(msg.id, {
+            include: [{ model: User, attributes: ['id', 'username'] }] 
+        });
+        io.to(String(chatId)).emit('update_message', fullMsg);
+      }
+    } catch (e) {
+      console.error('Error acknowledging delivery:', e);
+    }
+  });
+
   socket.on('disconnect', (reason) => {
     console.log(`User disconnected: ${socket.id}. Reason: ${reason}`);
   });
