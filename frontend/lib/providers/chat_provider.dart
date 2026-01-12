@@ -14,8 +14,18 @@ class ChatProvider with ChangeNotifier {
   int _pendingInvites = 0;
 
   List<dynamic> get chats => _chats;
-  List<dynamic> get activeChats => _chats.where((c) => (c['isArchived'] == false || c['isArchived'] == null) && (c['isDeleted'] == false || c['isDeleted'] == null)).toList();
-  List<dynamic> get archivedChats => _chats.where((c) => c['isArchived'] == true && (c['isDeleted'] == false || c['isDeleted'] == null)).toList();
+  List<dynamic> get _sortedChats {
+    final list = List<dynamic>.from(_chats);
+    list.sort((a, b) {
+      final aTime = a['lastMessageAt'] != null ? DateTime.parse(a['lastMessageAt']) : DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = b['lastMessageAt'] != null ? DateTime.parse(b['lastMessageAt']) : DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+    return list;
+  }
+
+  List<dynamic> get activeChats => _sortedChats.where((c) => (c['isArchived'] == false || c['isArchived'] == null) && (c['isDeleted'] == false || c['isDeleted'] == null)).toList();
+  List<dynamic> get archivedChats => _sortedChats.where((c) => c['isArchived'] == true && (c['isDeleted'] == false || c['isDeleted'] == null)).toList();
   List<dynamic> get messages => _messages;
   int get pendingInvites => _pendingInvites;
   Map<String, dynamic>? get currentChat {

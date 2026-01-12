@@ -427,16 +427,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ],
                 ),
                 title: Text(chatName),
-                subtitle: Text(chat['lastMessageAt'] != null 
-                  ? 'Last active: ${chat['lastMessageAt'].toString().substring(0, 16).replaceAll('T', ' ')}' 
-                  : 'No messages'),
-                trailing:  (!isArchivedList && chat['unreadCount'] != null && chat['unreadCount'] > 0) 
-                   ? Container(
-                       padding: const EdgeInsets.all(8),
-                       decoration: const BoxDecoration(color: Colors.deepPurpleAccent, shape: BoxShape.circle),
-                       child: Text('${chat['unreadCount']}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                     )
-                   : null,
+                subtitle: Text(
+                  chat['lastMessage'] != null 
+                    ? chat['lastMessage'].toString() 
+                    : (chat['lastMessageAt'] != null ? 'Last active: ${chat['lastMessageAt'].toString().substring(0, 16).replaceAll('T', ' ')}' : 'No messages'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (chat['lastMessageAt'] != null)
+                      Text(
+                        chat['lastMessageAt'].toString().substring(11, 16),
+                        style: const TextStyle(fontSize: 12, color: Colors.white54),
+                      ),
+                    const SizedBox(height: 4),
+                    if (!isArchivedList && chat['unreadCount'] != null && chat['unreadCount'] > 0) 
+                       Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                           decoration: BoxDecoration(color: Colors.deepPurpleAccent, borderRadius: BorderRadius.circular(10)),
+                           child: Text('${chat['unreadCount']}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                       )
+                  ],
+                ),
                 onTap: () {
                   if (ResponsiveLayout.isMobile(context)) {
                     Navigator.push(
