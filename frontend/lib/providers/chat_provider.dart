@@ -426,6 +426,13 @@ class ChatProvider with ChangeNotifier {
     _typingUsers.clear();
   }
 
+  void disconnect() {
+    if(_socket != null) {
+      _socket!.disconnect();
+      _socket = null;
+    }
+  }
+
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
