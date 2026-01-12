@@ -7,8 +7,60 @@ import 'screens/register_screen.dart';
 import 'screens/verification_screen.dart';
 import 'screens/home_screen.dart'; // Placeholder
 
+import 'package:flutter/foundation.dart';
+import 'widgets/global_error_display.dart';
+
 void main() {
-  runApp(const MyApp());
+  // Capture framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    if (kReleaseMode) {
+      // In release, we could log to server
+    }
+  };
+
+  // Custom error widget for UI crashes
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return GlobalErrorDisplay(
+      errorDetails: kDebugMode ? details : null,
+      onRetry: () {
+         // This is a simple way to reload, but the RestartWidget is better for full state reset.
+         runApp(const RestartWidget(child: MyApp()));
+      },
+    );
+  };
+
+  runApp(const RestartWidget(child: MyApp()));
+}
+
+class RestartWidget extends StatefulWidget {
+  final Widget child;
+  const RestartWidget({super.key, required this.child});
+
+  static void restartApp(BuildContext context) {
+    context.findAncestorStateOfType<_RestartWidgetState>()?.restartApp();
+  }
+
+  @override
+  State<RestartWidget> createState() => _RestartWidgetState();
+}
+
+class _RestartWidgetState extends State<RestartWidget> {
+  Key _key = UniqueKey();
+
+  void restartApp() {
+    setState(() {
+      _key = UniqueKey();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: _key,
+      child: widget.child,
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -22,6 +74,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: MaterialApp(
+        builder: (context, widget) {
+          // Wrap with another error boundary if needed, but ErrorWidget.builder is global.
+          return widget!;
+        },
         title: 'Kood/Messenger',
         debugShowCheckedModeBanner: false,
         theme: ThemeData.dark().copyWith(
