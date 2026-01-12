@@ -361,14 +361,16 @@ class ChatProvider with ChangeNotifier {
 
     try {
       debugPrint('ChatProvider: Sending message to Chat $_currentChatId: $text');
-      await _chatService.sendMessage(_currentChatId!, text, media, type);
-    } catch (e) {
-      // Mark as failed instead of removing
+      final confirmedMsg = await _chatService.sendMessage(_currentChatId!, text, media, type);
+      
+      // Update optimistic message with real data from server immediately
       int idx = _messages.indexWhere((m) => m['id'] == 'temp_$tempId');
       if (idx != -1) {
-        _messages[idx]['status'] = 'failed';
+        debugPrint('ChatProvider: HTTP success, updating temp_$tempId with real ID ${confirmedMsg['id']}');
+        _messages[idx] = confirmedMsg;
         notifyListeners();
       }
+    } catch (e) {
       print(e);
       rethrow;
     }
@@ -388,7 +390,12 @@ class ChatProvider with ChangeNotifier {
     }
 
     try {
-      await _chatService.sendMessage(chatId, content, null, type); // For now, retry only text. Media might need more logic if it wasn't uploaded.
+      final confirmedMsg = await _chatService.sendMessage(chatId, content, null, type); // For now, retry only text. Media might need more logic if it wasn't uploaded.
+      int idx = _messages.indexWhere((m) => m['id'] == tempId);
+      if (idx != -1) {
+        _messages[idx] = confirmedMsg;
+        notifyListeners();
+      }
     } catch (e) {
       int idx = _messages.indexWhere((m) => m['id'] == tempId);
       if (idx != -1) {

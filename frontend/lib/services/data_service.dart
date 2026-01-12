@@ -120,7 +120,7 @@ class ChatService {
     throw Exception('Failed to load messages');
   }
 
-  Future<void> sendMessage(int chatId, String? content, XFile? media, String type) async {
+  Future<Map<String, dynamic>> sendMessage(int chatId, String? content, XFile? media, String type) async {
     final token = await _getToken();
     if (token == null) throw Exception('Authentication required');
     var request = http.MultipartRequest('POST', Uri.parse('${Config.baseUrl}/api/chats/$chatId/messages'));
@@ -137,8 +137,10 @@ class ChatService {
       ));
     }
     
-    final response = await request.send();
-    if(response.statusCode != 200) throw Exception('Failed to send message');
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    if(response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to send message');
   }
 
   Future<void> deleteChat(int id) async {
