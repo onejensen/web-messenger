@@ -6,6 +6,7 @@ import 'chat_screen.dart';
 import 'search_screen.dart';
 import 'profile_screen.dart';
 import 'invites_screen.dart';
+import 'create_group_screen.dart';
 import '../config/config.dart';
 import '../widgets/responsive_layout.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -132,9 +133,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   AppBar _buildAppBar(BuildContext context) {
+    final bool isMobile = ResponsiveLayout.isMobile(context);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final chat = Provider.of<ChatProvider>(context, listen: false);
+
     return AppBar(
       title: const Text('Kood/Messenger'),
-      bottom: ResponsiveLayout.isMobile(context)
+      bottom: isMobile
           ? const TabBar(
               tabs: [
                 Tab(text: 'Chats', icon: Icon(Icons.chat)),
@@ -146,58 +151,110 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
+          tooltip: 'Sync',
           onPressed: () {
-            final chat = Provider.of<ChatProvider>(context, listen: false);
             chat.updatePendingInvitesCount();
             chat.loadChats();
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Syncing...'), duration: Duration(seconds: 1)));
           },
         ),
-        Consumer<ChatProvider>(
-          builder: (_, chat, __) => Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications),
-                onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const InvitesScreen())),
+        if (!isMobile) ...[
+          // Exposed buttons for Desktop
+          _buildInviteButton(context),
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen())),
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_search),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const SearchScreen())),
+          ),
+          IconButton(
+            icon: const Icon(Icons.exit_to_app),
+            onPressed: () => auth.logout(),
+          ),
+        ] else ...[
+          // Popup Menu for Mobile to avoid overflow
+          _buildInviteButton(context),
+          IconButton(
+            icon: const Icon(Icons.person_search),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const SearchScreen())),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'group') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateGroupScreen()));
+              } else if (value == 'profile') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              } else if (value == 'logout') {
+                auth.logout();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'group',
+                child: ListTile(
+                  leading: Icon(Icons.group_add),
+                  title: Text('Nuevo Grupo'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-              if (chat.pendingInvites > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                        color: Colors.red, shape: BoxShape.circle),
-                    constraints:
-                        const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text('${chat.pendingInvites}',
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 10),
-                        textAlign: TextAlign.center),
-                  ),
-                )
+              const PopupMenuItem(
+                value: 'profile',
+                child: ListTile(
+                  leading: Icon(Icons.person),
+                  title: Text('Perfil'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(Icons.exit_to_app, color: Colors.redAccent),
+                  title: Text('Cerrar sesión', style: TextStyle(color: Colors.redAccent)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.person),
-          onPressed: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen())),
-        ),
-        IconButton(
-          icon: const Icon(Icons.person_search),
-          onPressed: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SearchScreen())),
-        ),
-        IconButton(
-          icon: const Icon(Icons.exit_to_app),
-          onPressed: () =>
-              Provider.of<AuthProvider>(context, listen: false).logout(),
-        ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildInviteButton(BuildContext context) {
+    return Consumer<ChatProvider>(
+      builder: (_, chat, __) => Stack(
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const InvitesScreen())),
+          ),
+          if (chat.pendingInvites > 0)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                    color: Colors.red, shape: BoxShape.circle),
+                constraints:
+                    const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text('${chat.pendingInvites}',
+                    style:
+                        const TextStyle(color: Colors.white, fontSize: 10),
+                    textAlign: TextAlign.center),
+              ),
+            )
+        ],
+      ),
     );
   }
 

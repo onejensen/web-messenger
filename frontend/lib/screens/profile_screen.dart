@@ -128,7 +128,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
              const SizedBox(height: 16),
              TextButton(
                onPressed: _showChangePasswordDialog,
-               child: const Text('Change Password', style: TextStyle(color: Colors.redAccent)),
+               child: const Text('Change Password', style: TextStyle(color: Colors.blueAccent)),
+             ),
+             const Divider(height: 48),
+             SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Provider.of<AuthProvider>(context, listen: false).logout();
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }, 
+                  icon: const Icon(Icons.logout, color: Colors.redAccent),
+                  label: const Text('Cerrar sesión', style: TextStyle(color: Colors.redAccent)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.redAccent),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
              ),
            ],
          ),

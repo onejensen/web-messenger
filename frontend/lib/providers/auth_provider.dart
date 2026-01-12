@@ -20,14 +20,14 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> tryAutoLogin() async {
     final token = await _authService.getToken();
-    if (token != null) {
+    if (token != null && token.isNotEmpty && token != 'null') {
       final user = await _authService.getUser();
       if (user != null) {
-      _isAuthenticated = true;
-      _user = user;
-      _token = token;
-      notifyListeners();
-          }
+        _isAuthenticated = true;
+        _user = user;
+        _token = token;
+        notifyListeners();
+      }
     }
   }
 
@@ -67,10 +67,11 @@ class AuthProvider with ChangeNotifier {
       debugPrint('AuthProvider: Verifying $email with code $code');
       final data = await _authService.verifyRegistration(email, code);
       debugPrint('AuthProvider: Verification response received. Token: ${data['token'] != null}');
-      if (data['token'] != null) {
+      final token = data['token'];
+      if (token != null && token.isNotEmpty && token != 'null') {
         _isAuthenticated = true;
         _user = data['user'];
-        _token = data['token'];
+        _token = token;
         debugPrint('AuthProvider: State updated. isAuthenticated: $_isAuthenticated');
       }
     } catch (e) {

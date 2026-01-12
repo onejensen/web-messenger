@@ -8,12 +8,15 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class UserService {
   final _storage = const FlutterSecureStorage();
 
-  Future<String> _getToken() async {
-    return await _storage.read(key: 'token') ?? '';
+  Future<String?> _getToken() async {
+    final token = await _storage.read(key: 'token');
+    if (token == null || token.isEmpty || token == 'null') return null;
+    return token;
   }
 
   Future<List<dynamic>> searchUsers(String query) async {
     final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
     final response = await http.get(
       Uri.parse('${Config.baseUrl}/api/users/search?query=${Uri.encodeComponent(query)}'),
       headers: {'Authorization': 'Bearer $token'},
@@ -24,6 +27,7 @@ class UserService {
 
   Future<void> sendInvite(int receiverId) async {
     final token = await _getToken();
+    if (token == null) return;
     await http.post(
       Uri.parse('${Config.baseUrl}/api/users/invites'),
       headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
@@ -33,6 +37,7 @@ class UserService {
 
   Future<List<dynamic>> getInvites() async {
     final token = await _getToken();
+    if (token == null) return [];
     final response = await http.get(
       Uri.parse('${Config.baseUrl}/api/users/invites'),
       headers: {'Authorization': 'Bearer $token'},
@@ -43,6 +48,7 @@ class UserService {
   
   Future<Map<String, dynamic>?> respondInvite(int id, String status) async {
     final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
     final response = await http.put(
       Uri.parse('${Config.baseUrl}/api/users/invites/$id'),
       headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
@@ -52,8 +58,10 @@ class UserService {
     final errorData = jsonDecode(response.body);
     throw Exception(errorData['error'] ?? 'Failed to respond invite');
   }
+
   Future<void> updateProfile(String? aboutMe, XFile? image) async {
     final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
     var request = http.MultipartRequest('PUT', Uri.parse('${Config.baseUrl}/api/users/profile'));
     request.headers['Authorization'] = 'Bearer $token';
     if(aboutMe != null) request.fields['aboutMe'] = aboutMe;
@@ -71,6 +79,7 @@ class UserService {
 
   Future<Map<String, dynamic>> getProfile() async {
      final token = await _getToken();
+     if (token == null) throw Exception('Authentication required');
      final response = await http.get(
        Uri.parse('${Config.baseUrl}/api/users/profile'),
        headers: {'Authorization': 'Bearer $token'},
@@ -83,12 +92,15 @@ class UserService {
 class ChatService {
   final _storage = const FlutterSecureStorage();
 
-  Future<String> _getToken() async {
-    return await _storage.read(key: 'token') ?? '';
+  Future<String?> _getToken() async {
+    final token = await _storage.read(key: 'token');
+    if (token == null || token.isEmpty || token == 'null') return null;
+    return token;
   }
 
   Future<List<dynamic>> getChats() async {
     final token = await _getToken();
+    if (token == null) return [];
     final response = await http.get(
       Uri.parse('${Config.baseUrl}/api/chats'),
       headers: {'Authorization': 'Bearer $token'},
@@ -99,6 +111,7 @@ class ChatService {
 
   Future<List<dynamic>> getMessages(int chatId) async {
     final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
     final response = await http.get(
       Uri.parse('${Config.baseUrl}/api/chats/$chatId/messages'),
       headers: {'Authorization': 'Bearer $token'},
@@ -109,6 +122,7 @@ class ChatService {
 
   Future<void> sendMessage(int chatId, String? content, XFile? media, String type) async {
     final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
     var request = http.MultipartRequest('POST', Uri.parse('${Config.baseUrl}/api/chats/$chatId/messages'));
     request.headers['Authorization'] = 'Bearer $token';
     if(content != null) request.fields['content'] = content;
@@ -129,16 +143,19 @@ class ChatService {
 
   Future<void> deleteChat(int id) async {
     final token = await _getToken();
+    if (token == null) return;
     await http.delete(Uri.parse('${Config.baseUrl}/api/chats/$id'), headers: {'Authorization': 'Bearer $token'});
   }
 
   Future<void> markRead(int id) async {
     final token = await _getToken();
+    if (token == null) return;
     await http.put(Uri.parse('${Config.baseUrl}/api/chats/$id/read'), headers: {'Authorization': 'Bearer $token'});
   }
 
   Future<void> editMessage(int chatId, int msgId, String content) async {
     final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
     final response = await http.put(
       Uri.parse('${Config.baseUrl}/api/chats/$chatId/messages/$msgId'),
       headers: {
@@ -152,6 +169,7 @@ class ChatService {
 
   Future<void> deleteMessage(int chatId, int msgId) async {
     final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
     final response = await http.delete(
       Uri.parse('${Config.baseUrl}/api/chats/$chatId/messages/$msgId'),
       headers: {'Authorization': 'Bearer $token'},
@@ -161,11 +179,31 @@ class ChatService {
   
   Future<void> archiveChat(int id) async {
     final token = await _getToken();
+    if (token == null) return;
     await http.post(Uri.parse('${Config.baseUrl}/api/chats/$id/archive'), headers: {'Authorization': 'Bearer $token'});
   }
 
   Future<void> unarchiveChat(int id) async {
     final token = await _getToken();
+    if (token == null) return;
     await http.post(Uri.parse('${Config.baseUrl}/api/chats/$id/unarchive'), headers: {'Authorization': 'Bearer $token'});
+  }
+
+  Future<Map<String, dynamic>> createGroupChat(String groupName, List<int> userIds) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Authentication required');
+    final response = await http.post(
+      Uri.parse('${Config.baseUrl}/api/chats/group'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'groupName': groupName,
+        'userIds': userIds,
+      }),
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception(jsonDecode(response.body)['error'] ?? 'Failed to create group');
   }
 }

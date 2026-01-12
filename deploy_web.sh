@@ -3,8 +3,7 @@
 # Configuration
 GITHUB_USER="onejensen" # Change this if needed
 REPO_NAME="web-messenger"
-BACKEND_URL="https://your-backend-url.onrender.com" # Change this after deploying backend
-
+BACKEND_URL="https://web-messenger-api.onrender.com" 
 echo "🚀 Starting Web Deployment..."
 
 # 1. Update config.dart for production

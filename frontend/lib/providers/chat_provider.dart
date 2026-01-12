@@ -26,10 +26,10 @@ class ChatProvider with ChangeNotifier {
        _socket!.disconnect();
     }
     _socket = IO.io(Config.baseUrl, <String, dynamic>{
-      'transports': ['websocket'],
+      'transports': ['websocket', 'polling'],
       'autoConnect': false,
-      'forceNew': true, // Essential for switch accounts / session reset
-      'extraHeaders': {'Authorization': 'Bearer $userToken'} // Auth
+      'forceNew': true, 
+      'auth': {'token': userToken}
     });
     _socket!.connect();
     
