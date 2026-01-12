@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import '../widgets/audio_player_widget.dart';
 import '../widgets/video_player_widget.dart';
+import '../widgets/group_info_dialog.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ChatScreen extends StatefulWidget {
@@ -304,6 +305,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: _isSearchMode 
         ? AppBar(
             leading: IconButton(
@@ -362,6 +364,23 @@ class _ChatScreenState extends State<ChatScreen> {
                 icon: const Icon(Icons.search),
                 onPressed: () => setState(() => _isSearchMode = true),
               ),
+              if (widget.isGroup)
+                IconButton(
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: () {
+                    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+                    final chat = chatProvider.currentChat;
+                    if (chat != null && chat['Users'] != null) {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => GroupInfoDialog(
+                          groupName: chat['name'] ?? 'Group',
+                          participants: chat['Users'],
+                        ),
+                      );
+                    }
+                  },
+                ),
             ],
           ),
       body: Column(

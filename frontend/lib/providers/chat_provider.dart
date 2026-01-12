@@ -18,6 +18,14 @@ class ChatProvider with ChangeNotifier {
   List<dynamic> get archivedChats => _chats.where((c) => c['isArchived'] == true && (c['isDeleted'] == false || c['isDeleted'] == null)).toList();
   List<dynamic> get messages => _messages;
   int get pendingInvites => _pendingInvites;
+  Map<String, dynamic>? get currentChat {
+    if (_currentChatId == null) return null;
+    try {
+      return _chats.firstWhere((c) => c['id'].toString() == _currentChatId.toString());
+    } catch (_) {
+      return null;
+    }
+  }
 
   void initSocket(String userToken, int userId) {
     if(_socket != null) {
