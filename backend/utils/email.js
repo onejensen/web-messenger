@@ -1,28 +1,23 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 10000, // Give it 10 seconds
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async (options) => {
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || 'Kood Messenger <noreply@koodmessenger.com>',
-    to: options.email,
-    subject: options.subject,
-    text: options.message,
-    html: options.html,
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Email sent to: ${options.email}`);
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'Kood Messenger <onboarding@resend.dev>',
+      to: options.email,
+      subject: options.subject,
+      text: options.message,
+      html: options.html,
+    });
+
+    if (error) {
+      console.error('Resend API error:', error);
+      throw new Error('Email could not be sent');
+    }
+
+    console.log(`Email sent to: ${options.email}. ID: ${data.id}`);
   } catch (error) {
     console.error('Email sending failed:', error);
     throw new Error('Email could not be sent');
