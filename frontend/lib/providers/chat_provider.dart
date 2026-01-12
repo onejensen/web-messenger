@@ -375,7 +375,11 @@ class ChatProvider with ChangeNotifier {
 
     try {
       debugPrint('ChatProvider: Sending message to Chat $_currentChatId: $text');
-      final confirmedMsg = await _chatService.sendMessage(_currentChatId!, text, media, type);
+      // Added a timeout to prevent videos from being stuck in "Uploading" forever
+      final confirmedMsg = await _chatService.sendMessage(_currentChatId!, text, media, type).timeout(
+        const Duration(minutes: 5),
+        onTimeout: () => throw Exception('Upload timed out after 5 minutes'),
+      );
       
       // Update optimistic message with real data from server immediately
       int idx = _messages.indexWhere((m) => m['id'] == 'temp_$tempId');
@@ -385,7 +389,13 @@ class ChatProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print(e);
+      // Mark as failed instead of removing
+      int idx = _messages.indexWhere((m) => m['id'] == 'temp_$tempId');
+      if (idx != -1) {
+        _messages[idx]['status'] = 'failed';
+        notifyListeners();
+      }
+      debugPrint('ChatProvider: Error sending message: $e');
       rethrow;
     }
   }
