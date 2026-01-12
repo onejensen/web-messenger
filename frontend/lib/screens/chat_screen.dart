@@ -348,6 +348,7 @@ class _ChatScreenState extends State<ChatScreen> {
           )
         : AppBar(
             title: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.isGroup) ...[
                   const Icon(Icons.group, size: 20),

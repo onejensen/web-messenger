@@ -37,10 +37,12 @@ class _InvitesScreenState extends State<InvitesScreen> {
       
       if (status == 'accepted' && result != null && result['chat'] != null) {
          if(!mounted) return;
-         // Navigate to chat
-         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => 
-            ChatScreen(chatId: result['chat']['id'], title: senderName)
-         ));
+          // Close invites screen and return chat data to home
+          Navigator.pop(context, {
+            'id': result['chat']['id'],
+            'title': senderName,
+            'isGroup': result['chat']['isGroup'] ?? false,
+          });
       } else {
         _loadInvites(); // Refresh local list
         if(!mounted) return;

@@ -278,8 +278,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const InvitesScreen())),
+            onPressed: () async {
+              final result = await Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const InvitesScreen()));
+              
+              if (result != null && result is Map && mounted) {
+                final int chatId = result['id'];
+                final String title = result['title'];
+                final bool isGroup = result['isGroup'] ?? false;
+                
+                if (ResponsiveLayout.isMobile(context)) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => 
+                    ChatScreen(chatId: chatId, title: title, isGroup: isGroup)));
+                } else {
+                  setState(() {
+                    _selectedChatId = chatId;
+                    _activeTitle = title;
+                    _isSelectedChatGroup = isGroup;
+                  });
+                }
+              }
+            },
           ),
           if (chat.pendingInvites > 0)
             Positioned(
