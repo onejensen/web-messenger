@@ -87,4 +87,4 @@ This project has successfully passed a comprehensive compliance audit, fulfillin
 - [x] Security UX (Password toggles & Logout dialogs)
 
 ---
-Developed with ❤️ by the team at Kood.
+Developed with ❤️
