@@ -276,8 +276,11 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                  color: isMe ? Colors.deepPurpleAccent : const Color(0xFF2C2C3E),
-                  borderRadius: BorderRadius.circular(12)
+                  color: isMe 
+                     ? (msg['status'] == 'failed' ? Colors.red.withOpacity(0.8) : Colors.deepPurpleAccent) 
+                     : const Color(0xFF2C2C3E),
+                  borderRadius: BorderRadius.circular(12),
+                  border: msg['status'] == 'failed' ? Border.all(color: Colors.redAccent, width: 1) : null,
               ),
               constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
               child: Column(
@@ -307,9 +310,16 @@ class _ChatScreenState extends State<ChatScreen> {
                                 } else if (msg['status'] == 'sending') {
                                   return const Icon(Icons.access_time, size: 12, color: Colors.white54);
                                 } else if (msg['status'] == 'failed') {
-                                  return GestureDetector(
-                                    onTap: () => Provider.of<ChatProvider>(context, listen: false).retrySendMessage(msg),
-                                    child: const Icon(Icons.error_outline, size: 14, color: Colors.redAccent),
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text('Failed. Tap to retry', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                                      const SizedBox(width: 4),
+                                      GestureDetector(
+                                        onTap: () => Provider.of<ChatProvider>(context, listen: false).retrySendMessage(msg),
+                                        child: const Icon(Icons.error_outline, size: 14, color: Colors.white),
+                                      ),
+                                    ],
                                   );
                                 } else {
                                   return const Icon(Icons.done, size: 12, color: Colors.white54);
