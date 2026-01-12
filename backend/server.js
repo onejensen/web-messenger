@@ -47,7 +47,7 @@ io.on('connection', (socket) => {
     ? authHeader.split(' ')[1] 
     : authToken;
 
-  if (token) {
+  if (token && token !== 'null' && token !== 'undefined' && token !== '') {
       try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
           const userId = decoded.id;
