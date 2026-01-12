@@ -74,7 +74,7 @@ class GlobalErrorDisplay extends StatelessWidget {
                         content: SingleChildScrollView(
                           child: Text(
                             errorDetails.toString(),
-                            style: const TextStyle(fontSize: 12, family: 'monospace'),
+                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
                           ),
                         ),
                         actions: [
