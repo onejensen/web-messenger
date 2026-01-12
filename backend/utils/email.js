@@ -1,6 +1,13 @@
 const axios = require('axios');
 
 const sendEmail = async (options) => {
+  if (!process.env.BREVO_API_KEY) {
+    console.error('CRITICAL: BREVO_API_KEY is not defined in environment variables');
+  }
+  if (!process.env.EMAIL_USER) {
+    console.error('CRITICAL: EMAIL_USER is not defined in environment variables');
+  }
+
   try {
     const response = await axios.post(
       'https://api.brevo.com/v3/smtp/email',
