@@ -118,7 +118,7 @@ async function startServer() {
         }
     }
 
-    await sequelize.sync(); 
+    await sequelize.sync({ force: true }); 
     console.log('Database synced');
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
