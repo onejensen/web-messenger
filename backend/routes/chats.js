@@ -86,9 +86,7 @@ router.post('/', verifyToken, async (req, res) => {
 // Create Group Chat
 router.post('/group', verifyToken, async (req, res) => {
     try {
-        const { groupName, userIds } = req.body; // userIds is array of participants to invite
-        if(!groupName) return res.status(400).json({ error: 'Group name required' });
-
+        console.log(`Backend: Creating group "${groupName}" with creator ${req.user.id} and invited users: ${userIds.join(', ')}`);
         const chat = await Chat.create({ isGroup: true, name: groupName });
         // Add creator immediately
         await chat.addUsers(req.user.id);
@@ -96,9 +94,10 @@ router.post('/group', verifyToken, async (req, res) => {
         // Create invites for others
         const { Invite } = require('../models');
         for(const uId of userIds) {
+            console.log(`Backend: Creating invite for user ${uId} to group ${chat.id}`);
             await Invite.create({
                 senderId: req.user.id,
-                receiverId: uId,
+                receiverId: Number(uId),
                 ChatId: chat.id,
                 groupName: groupName,
                 status: 'pending'
@@ -109,7 +108,8 @@ router.post('/group', verifyToken, async (req, res) => {
             console.log(`Backend: Group invite created. Notifying user_${uId} via socket 'new_invite'`);
             io.to(`user_${uId}`).emit('new_invite', { 
                 sender: req.user.username,
-                groupName: groupName
+                groupName: groupName,
+                isGroup: true
             });
         }
 

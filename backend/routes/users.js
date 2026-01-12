@@ -142,7 +142,7 @@ router.get('/invites', verifyToken, async (req, res) => {
             where: { receiverId: req.user.id, status: 'pending' },
             include: [
                 { model: User, as: 'Sender', attributes: ['username'] },
-                { model: Chat, attributes: ['id', 'isGroup'] }
+                { model: Chat, attributes: ['id', 'isGroup', 'name'] }
             ]
         });
         console.log(`Found ${invites.length} pending invites for user ${req.user.id}`);

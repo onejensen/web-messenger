@@ -67,14 +67,25 @@ class _InvitesScreenState extends State<InvitesScreen> {
               itemCount: _invites.length,
               itemBuilder: (ctx, i) {
                 final invite = _invites[i];
+                final bool isGroup = invite['Chat'] != null && invite['Chat']['isGroup'] == true;
+                final String groupName = invite['Chat'] != null ? invite['Chat']['name'] : null;
+                final String title = isGroup ? (groupName ?? 'Group') : invite['Sender']['username'];
+                final String subtitle = isGroup 
+                    ? 'Invited you to join a group' 
+                    : 'Wants to chat with you';
+
                 return ListTile(
-                   title: Text(invite['Sender']['username']),
-                   subtitle: const Text('Wants to chat with you'),
+                   leading: CircleAvatar(
+                     backgroundColor: isGroup ? Colors.deepPurpleAccent : Colors.grey[800],
+                     child: Icon(isGroup ? Icons.group : Icons.person, color: Colors.white),
+                   ),
+                   title: Text(title),
+                   subtitle: Text(subtitle + ' (from ${invite['Sender']['username']})'),
                    trailing: Row(
                      mainAxisSize: MainAxisSize.min,
                      children: [
-                       IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: () => _respond(invite['id'], 'accepted', invite['Sender']['username'])),
-                       IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => _respond(invite['id'], 'declined', invite['Sender']['username'])),
+                       IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: () => _respond(invite['id'], 'accepted', title)),
+                       IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => _respond(invite['id'], 'declined', title)),
                      ],
                    ),
                 );
