@@ -1,6 +1,6 @@
 # Kood/Messenger 🚀
 
-A robust, full-stack Flutter messenger application with a Node.js backend, built for security, real-time interaction, and a premium user experience.
+A full-stack Flutter messenger application with a Node.js backend.
 
 ## 🌟 Key Features
 
