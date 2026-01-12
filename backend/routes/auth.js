@@ -8,7 +8,8 @@ const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emai
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    let { username, email, password } = req.body;
+    email = email.toLowerCase();
 
     // Password Strength Check
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -64,7 +65,8 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email.toLowerCase();
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(400).json({ error: 'User not found' });
 
@@ -87,7 +89,8 @@ router.post('/login', async (req, res) => {
 // Verify Registration
 router.post('/verify-registration', async (req, res) => {
   try {
-    const { email, code } = req.body;
+    let { email, code } = req.body;
+    email = email.toLowerCase();
     const user = await User.findOne({ where: { email, verificationCode: code } });
     if (!user) return res.status(400).json({ error: 'Invalid verification code' });
 
