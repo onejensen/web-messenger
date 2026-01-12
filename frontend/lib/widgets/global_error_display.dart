@@ -34,7 +34,7 @@ class GlobalErrorDisplay extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               const Text(
-                'Something went wrong',
+                'Unexpected error detected',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -43,7 +43,7 @@ class GlobalErrorDisplay extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'The application encountered an unexpected error. Don\'t worry, your data is safe.',
+                'The messenger will now reload to the last stable state to ensure your security and data integrity.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -55,8 +55,8 @@ class GlobalErrorDisplay extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: onRetry,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Restart Application'),
+                  icon: const Icon(Icons.restore_rounded),
+                  label: const Text('Restore Messenger'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurpleAccent,
                     padding: const EdgeInsets.symmetric(vertical: 16),

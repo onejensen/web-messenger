@@ -6,8 +6,8 @@ class Config {
     // For reviewers: 
     // - Use 'localhost' if running the backend on the same machine.
     // - Use your PC's local IP (e.g. 192.168.1.XX) if running on a real phone.
-    if (kIsWeb) return 'https://web-messenger-api.onrender.com';
-    if (Platform.isAndroid) return 'https://web-messenger-api.onrender.com'; // Default for Android Emulator
-    return 'https://web-messenger-api.onrender.com';
+    if (kIsWeb) return 'http://localhost:3000';
+    if (Platform.isAndroid) return 'http://localhost:3000'; // Default for Android Emulator
+    return 'http://localhost:3000';
   }
 }

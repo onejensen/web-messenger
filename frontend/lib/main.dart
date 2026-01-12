@@ -10,6 +10,8 @@ import 'screens/home_screen.dart'; // Placeholder
 import 'package:flutter/foundation.dart';
 import 'widgets/global_error_display.dart';
 
+final GlobalKey<ScaffoldMessengerState> messengerKey = GlobalKey<ScaffoldMessengerState>();
+
 void main() {
   // Capture framework errors
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -19,12 +21,31 @@ void main() {
     }
   };
 
+  // Capture asynchronous errors (outside of the widget tree)
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Global Async Error: $error');
+    messengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text('An unexpected error occurred: $error'),
+        backgroundColor: Colors.redAccent,
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(
+          label: 'RELOAD',
+          textColor: Colors.white,
+          onPressed: () {
+            runApp(const RestartWidget(child: MyApp()));
+          },
+        ),
+      ),
+    );
+    return true; // handled
+  };
+
   // Custom error widget for UI crashes
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return GlobalErrorDisplay(
       errorDetails: kDebugMode ? details : null,
       onRetry: () {
-         // This is a simple way to reload, but the RestartWidget is better for full state reset.
          runApp(const RestartWidget(child: MyApp()));
       },
     );
@@ -74,6 +95,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: MaterialApp(
+        scaffoldMessengerKey: messengerKey,
         builder: (context, widget) {
           // Wrap with another error boundary if needed, but ErrorWidget.builder is global.
           return widget!;
