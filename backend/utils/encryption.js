@@ -1,9 +1,13 @@
 const crypto = require('crypto');
 const algorithm = 'aes-256-cbc';
 
-// Use a fixed key for this demo. In production, use env var.
-// 32 bytes for key, 16 bytes for iv
-const SECRET_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// Use a stable fallback key for development. In production, ALWAYS set ENCRYPTION_KEY.
+const FALLBACK_KEY = '7f8e9d0c1b2a3f4e5d6c7b8a90123456'; 
+const SECRET_KEY = process.env.ENCRYPTION_KEY || FALLBACK_KEY;
+
+if (!process.env.ENCRYPTION_KEY) {
+  console.warn('WARNING: ENCRYPTION_KEY not found in environment variables. Using a stable fallback key. In production, this is insecure!');
+}
 const IV_LENGTH = 16;
 
 const encrypt = (text) => {
