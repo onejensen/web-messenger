@@ -88,15 +88,15 @@ class ChatProvider with ChangeNotifier {
          // Deduplicate: check if message ID already exists (from optimistic update)
          int existingIdx = _messages.indexWhere((m) => m['id'].toString() == data['id'].toString());
          if(existingIdx == -1) {
-            // Check for optimistic message match (same user, same content, temp id)
+            // Check for optimistic message match (same user, same type, matching content or media)
             int optIdx = _messages.indexWhere((m) => 
                m['id'].toString().startsWith('temp_') && 
-               m['content'] == data['content'] &&
-               m['User']['id'].toString() == data['User']['id'].toString()
+               m['User']['id'].toString() == data['UserId'].toString() &&
+               (data['type'] == 'text' ? m['content'] == data['content'] : m['type'] == data['type'])
             );
 
             if(optIdx != -1) {
-               debugPrint('ChatProvider: Replacing optimistic message $optIdx with server message ${data['id']}');
+               debugPrint('ChatProvider: Replacing optimistic message $optIdx with server message ${data['id']} (Type: ${data['type']})');
                _messages[optIdx] = data;
             } else {
                _messages.add(data);

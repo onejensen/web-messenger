@@ -22,6 +22,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   }
 
   void _initPlayer() async {
+    if (widget.videoUrl.isEmpty) {
+      debugPrint('VideoPlayerWidget: videoUrl is empty (pending upload)');
+      return;
+    }
     _videoPlayerController = VideoPlayerController.networkUrl(
       Uri.parse('${Config.baseUrl}/${widget.videoUrl}'),
     );
