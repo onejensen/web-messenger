@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
-import 'verify_screen.dart';
-import 'forgot_password_screen.dart';
+import 'verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   static const routeName = '/login';
@@ -28,14 +27,16 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if(!mounted) return;
-      final errorMsg = e.toString();
-      if (errorMsg.contains('Email not verified')) {
-         Navigator.of(context).push(
-           MaterialPageRoute(builder: (_) => VerificationScreen(email: _emailController.text.trim())),
-         );
+      final errorStr = e.toString();
+      if (errorStr.contains('UNVERIFIED:')) {
+        final email = errorStr.split('UNVERIFIED:')[1];
+        Navigator.of(context).pushNamed(
+          VerificationScreen.routeName,
+          arguments: email,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text(errorStr), backgroundColor: Colors.redAccent),
         );
       }
     }
@@ -85,10 +86,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pushNamed(RegisterScreen.routeName),
                   child: const Text('Create Account'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pushNamed(ForgotPasswordScreen.routeName),
-                  child: const Text('Forgot Password?'),
                 ),
               ],
             ),

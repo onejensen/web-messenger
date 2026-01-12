@@ -15,11 +15,26 @@ class _SearchScreenState extends State<SearchScreen> {
   final UserService _userService = UserService();
 
   Future<void> _search() async {
+    final query = _controller.text.trim();
+    if (query.isEmpty) return;
+
     try {
-      final results = await _userService.searchUsers(_controller.text);
+      debugPrint('SearchScreen: Searching for "$query"');
+      final results = await _userService.searchUsers(query);
+      debugPrint('SearchScreen: Found ${results.length} results');
       setState(() => _results = results);
+      if (results.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No users found')),
+        );
+      }
     } catch (e) {
-      // Handle error
+      debugPrint('SearchScreen: Search error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Search failed: $e'), backgroundColor: Colors.redAccent),
+      );
     }
   }
 
@@ -35,32 +50,70 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-            controller: _controller,
-            decoration: const InputDecoration(hintText: 'Search username...', border: InputBorder.none),
-            onSubmitted: (_) => _search(),
-        ),
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: _search)],
-      ),
-      body: ListView.builder(
-        itemCount: _results.length,
-        itemBuilder: (ctx, i) {
-          final user = _results[i];
-          return ListTile(
-            leading: CircleAvatar(
-                 backgroundImage: user['profilePicture'] != null 
-                    ? NetworkImage('${Config.baseUrl}/${user['profilePicture']}') 
-                    : null,
-                 child: user['profilePicture'] == null ? const Icon(Icons.person) : null,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: 120.0,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              title: const Text('Search Users', style: TextStyle(color: Colors.white, fontSize: 18)),
+              background: Container(color: Colors.deepPurpleAccent),
             ),
-            title: Text(user['username']),
-            trailing: IconButton(
-              icon: const Icon(Icons.person_add),
-              onPressed: () => _invite(user['id']),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: 'Type username...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: _search,
+                  ),
+                  filled: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onSubmitted: (_) => _search(),
+              ),
             ),
-          );
-        },
+          ),
+          if (_results.isEmpty)
+            const SliverFillRemaining(
+              child: Center(child: Text('Start searching for new connections!')),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (ctx, i) {
+                  final user = _results[i];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: user['profilePicture'] != null
+                            ? NetworkImage('${Config.baseUrl}/${user['profilePicture']}')
+                            : const AssetImage('assets/images/defaultProfile.jpg') as ImageProvider,
+                      ),
+                      title: Text(user['username'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('New Messenger User'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.person_add, color: Colors.deepPurpleAccent),
+                        onPressed: () => _invite(user['id']),
+                      ),
+                    ),
+                  );
+                },
+                childCount: _results.length,
+              ),
+            ),
+        ],
       ),
     );
   }

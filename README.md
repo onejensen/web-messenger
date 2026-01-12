@@ -1,104 +1,57 @@
 # Kood/Messenger
 
-## Project Overview
-Kood/Messenger is a secure, real-time web messaging platform. It features a robust Node.js backend using Sequelize with SQLite, and a premium frontend built with Flutter web. The application prioritizes privacy through end-to-end encryption of sensitive data (messages, profile information, and chat details) before storage.
+A full-stack Flutter messenger application with Node.js backend.
 
-### Key Features
-- **Real-time Web Messaging**: Instant text, image, and video delivery via Socket.io.
-- **Security**: AES-256-CBC encryption for all sensitive user data.
-- **Authentication**: Secure JWT-based login, 6-digit email verification, and password reset flow.
-- **Profile Management**: Customizable profiles with "About Me" sections and avatar uploads.
-- **Collaborative Features**: Individual and group chat invitations with real-time notifications.
-- **Advanced UX**: Typing indicators, delivery/read receipts, and message search.
+## Features
+- **Authentication**: JWT-based auth, password strength meter, persistent session.
+- **Messaging**: Real-time chat (text, image, video, audio) with delivery status.
+- **Encryption**: Sensitive data (messages, profile details) encrypted at rest (AES-256).
+- **Profile**: Data persistence, avatar upload.
+- **Search & Invites**: Find users and manage connections.
+- **UI**: Modern Dark Mode aesthetics.
 
----
-
-## Setup Instructions (Web Testing)
+## Reviewer Guide
 
 ### Prerequisites
-- **Node.js** (v16+)
-- **Flutter SDK** (configured for Web)
-- **Google Chrome** (Recommended for testing)
+- **Node.js**: Required to run the backend.
+- **Android Device/Emulator**: To run the APK.
 
-### 1. Backend Setup
-1. Navigate to the `backend/` directory:
+### Option 1: Install APK directly (Recommended)
+1. Navigate to the `release/` folder.
+2. Choose the APK for your device architecture:
+   - **Modern Phones (Most common)**: `messenger-arm64.apk`
+   - **Older Phones**: `messenger-armv7.apk`
+3. Transfer to your Android device and install.
+   - **Note**: The app expects the backend to be running on your local network. 
+   - Since the APK is built with generic config, it tries `10.0.2.2` (Android Emulator default) or `localhost`.
+   - **If running on a physical device**, you might need to ensure your phone and PC are on the same Wifi, but the IP hardcoded in `config.dart` (`10.0.2.2`) is specific to standard Android Emulators. 
+   - **Recommendation**: Use a standard Android Emulator (Avd) or adjust `frontend/lib/config/config.dart` to your PC's local IP and rebuild if using a physical device.
+
+### Option 2: Run Backend
+1. Open terminal in `backend/` folder.
+2. Run `./run.sh` (Mac/Linux) or `npm start`.
+3. Server starts on port 3000.
+
+### Option 3: Build/Run from Source
+ - **Backend**: `cd backend && npm install && npm start`
+ - **Frontend**: `cd frontend && flutter run`
+   - **Note**: Ensure you accept Microphone/Camera permissions on the device to use media features.
+
+
+### Resetting Data (Dev/Test)
+If you need to clear the database and start with a fresh environment:
+1. Stop the backend server.
+2. Run the following command from the project root:
    ```bash
-   cd backend
+   rm backend/database.sqlite && rm backend/uploads/*
    ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Configure the `.env` file (see [Configuration](#configuration) below).
-4. Start the server (runs on port **4000**):
-   ```bash
-   npm start
-   ```
-
-### 2. Frontend Setup (Web)
-1. Open a new terminal and navigate to the `frontend/` directory:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-3. Launch the Web app:
-   ```bash
-   flutter run -d chrome
-   ```
-
----
-
-## Configuration
-
-The application requires a `.env` file in the `backend/` directory with the following variables:
-
-```env
-JWT_SECRET=your_jwt_secret
-PORT=4000
-
-# Gmail SMTP Configuration (Recommended)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=465
-EMAIL_USER=your_gmail@gmail.com
-EMAIL_PASS=your_app_password
-EMAIL_FROM="Kood/Messenger <your_gmail@gmail.com>"
-```
-
-> [!TIP]
-> Use a Gmail "App Password" for `EMAIL_PASS` if you have 2FA enabled.
-
----
-
-## Web Testing Guide
-
-### Getting Started
-1. **Registration**: Create a new account with a real email. A **6-digit verification code** will be sent to your email address.
-2. **Verification**: Enter the code in the app to activate your account.
-3. **Login**: Use your verified credentials. The session will persist until you logout.
-4. **Multi-Session Test**: Open Chrome in Incognito mode to log in with a different account and test real-time interaction.
-
-### Messaging
-- **Find Contacts**: Use the search bar to find users by email or username.
-- **Invitations**: Send a chat invitation to start a 1-on-1 or group conversation.
-- **In-Chat**:
-  - Attach images or videos using the '+' button.
-  - Long-press or right-click messages to **Edit** or **Delete**.
-  - Use the top search icon to filter messages within the current chat.
-
-### Profile
-- Access your profile from the sidebar to update your "About Me" and upload a profile picture.
-
-### Deployment Note
-The application is designed to be deployment-ready. For web hosting, use `flutter build web` and serve the `build/web` directory using any static hosting provider (e.g., Vercel, Netlify). The backend can be deployed to any Node.js compatible environment (e.g., Heroku, DigitalOcean).
-
----
+3. Restart the backend: `cd backend && npm start`.
+   *Sequelize will automatically recreate the database schema.*
 
 ## Data Encryption
-All message content, user "About Me" sections, and group chat names are encrypted using AES-256-CBC before storage in the SQLite database. Encryption keys are managed securely in `backend/utils/encryption.js`.
+- All message content and user "About Me" sections are encrypted using AES-256-CBC before storage in the SQLite database.
+- Keys are managed in `backend/utils/encryption.js`.
 
 ## Tech Stack
-- **Frontend**: Flutter, Provider, Socket.io Client, Shared Preferences.
-- **Backend**: Node.js, Express, Sequelize, SQLite, Socket.io, Multer, Bcrypt.
+- **Frontend**: Flutter, Provider, Socket.io Client, AudioPlayers, Record, Path Provider.
+- **Backend**: Node.js, Express, Sequelize, SQLite, Socket.io, Multer.

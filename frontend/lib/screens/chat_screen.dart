@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import '../widgets/audio_player_widget.dart';
 import '../widgets/video_player_widget.dart';
-import '../widgets/message_search_delegate.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ChatScreen extends StatefulWidget {
   final int chatId;
@@ -39,17 +38,13 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollToBottom();
 
       _controller.addListener(() {
-        final auth = Provider.of<AuthProvider>(context, listen: false);
         if(_controller.text.isNotEmpty) {
+           final auth = Provider.of<AuthProvider>(context, listen: false);
            chatProvider.setTyping(true, auth.user!['username']);
            _typingTimer?.cancel();
            _typingTimer = Timer(const Duration(seconds: 2), () {
               chatProvider.setTyping(false, auth.user!['username']);
            });
-        } else {
-           // Text cleared, stop typing immediately
-           chatProvider.setTyping(false, auth.user!['username']);
-           _typingTimer?.cancel();
         }
       });
     });
@@ -74,32 +69,40 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage({String? text, File? file, String type = 'text'}) async {
+  Future<void> _sendMessage({String? text, XFile? file, String type = 'text'}) async {
     if ((text == null || text.trim().isEmpty) && file == null) return;
     try {
-      await Provider.of<ChatProvider>(context, listen: false).sendMessage(text ?? '', file, type);
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.sendMessage(text ?? '', file, type, auth.user!);
+      if (!mounted) return;
       _controller.clear();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Send failed: $e')));
     }
   }
 
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if(picked != null) _sendMessage(file: File(picked.path), type: 'image');
+    if(picked != null) _sendMessage(file: picked, type: 'image');
   }
 
   Future<void> _pickVideo() async {
     final picked = await ImagePicker().pickVideo(source: ImageSource.gallery);
-    if(picked != null) _sendMessage(file: File(picked.path), type: 'video');
+    if(picked != null) _sendMessage(file: picked, type: 'video');
   }
 
   Future<void> _toggleRecording() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Audio recording is not yet supported on Web')));
+      return;
+    }
     if (_isRecording) {
       final path = await _audioRecorder.stop();
       setState(() => _isRecording = false);
       if (path != null) {
-        _sendMessage(file: File(path), type: 'audio');
+        _sendMessage(file: XFile(path), type: 'audio');
       }
     } else {
       if (await Permission.microphone.request().isGranted) {
@@ -197,15 +200,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           Text(msg['User']['username'], style: const TextStyle(fontSize: 10, color: Colors.white54)),
                           if(isMe) ...[
                             const SizedBox(width: 4),
-                              Icon(
-                                msg['status'] == 'read' 
-                                  ? Icons.done_all 
-                                  : (msg['status'] == 'delivered' ? Icons.done_all : Icons.done),
-                                size: 12,
-                                color: msg['status'] == 'read' 
-                                  ? Colors.blue 
-                                  : (msg['status'] == 'delivered' ? Colors.white : Colors.white54),
-                              ),
+                            Icon(
+                              msg['status'] == 'read' ? Icons.done_all : Icons.done,
+                              size: 12,
+                              color: msg['status'] == 'read' ? Colors.blue : Colors.white54,
+                            ),
                           ]
                         ],
                       )
@@ -219,25 +218,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () async {
-              final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-              final result = await showSearch(
-                context: context,
-                delegate: MessageSearchDelegate(messages: chatProvider.messages),
-              );
-              if (result != null) {
-                // In a more advanced app, we'd scroll to the message
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Found at index: ${chatProvider.messages.indexOf(result)}')));
-              }
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: Column(
         children: [
           Expanded(

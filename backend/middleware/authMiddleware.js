@@ -8,17 +8,22 @@ const verifyToken = async (req, res, next) => {
   try {
     // Basic "Bearer <token>" split
     const bearer = token.split(' ');
-    const bearerToken = bearer[1] || token; // Handle if just token is sent or Bearer
+    const bearerToken = bearer[1] || token;
 
-    const verified = jwt.verify(bearerToken, process.env.JWT_SECRET || 'secret_key_123'); // Use env in prod
+    console.log(`Backend: Verifying Token: ${bearerToken.substring(0, 10)}...`);
+    const verified = jwt.verify(bearerToken, process.env.JWT_SECRET || 'secret_key_123');
+    console.log(`Backend: Token Verified for User ID: ${verified.id}`);
     
-    // Check if user still exists (e.g. after DB reset)
     const user = await User.findByPk(verified.id);
-    if (!user) return res.status(401).json({ error: 'User not found' });
+    if (!user) {
+      console.error(`Backend: User ID ${verified.id} from token not found in database.`);
+      return res.status(401).json({ error: 'User not found in database. Please log in again.' });
+    }
 
     req.user = verified;
     next();
   } catch (error) {
+    console.error('Backend: JWT Verification Error:', error.message);
     res.status(401).json({ error: 'Invalid token' });
   }
 };

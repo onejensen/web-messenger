@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import 'verify_screen.dart';
+import 'home_screen.dart';
+import 'verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   static const routeName = '/register';
@@ -51,10 +52,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if(!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration successful! Please check your email for the code.'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Registration successful! Check your email.'), backgroundColor: Colors.green),
       );
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => VerificationScreen(email: _emailController.text.trim())),
+      Navigator.of(context).pushReplacementNamed(
+        VerificationScreen.routeName,
+        arguments: _emailController.text.trim(),
       );
     } catch (e) {
       if(!mounted) return;

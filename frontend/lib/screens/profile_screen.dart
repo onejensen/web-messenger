@@ -1,11 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/data_service.dart';
-import '../config/config.dart';
-import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
+import '../config/config.dart';
+import 'dart:typed_data';
+import '../providers/auth_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,7 +17,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _aboutController = TextEditingController();
-  File? _image;
+  XFile? _image;
+  Uint8List? _imageBytes;
   final UserService _userService = UserService();
   bool _isLoading = false;
 
@@ -38,26 +40,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if(picked != null) setState(() => _image = File(picked.path));
+    if(picked != null) {
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _image = picked;
+        _imageBytes = bytes;
+      });
+    }
   }
 
   Future<void> _save() async {
     setState(() => _isLoading = true);
     try {
        await _userService.updateProfile(_aboutController.text, _image);
+       if (!mounted) return;
+       
        // Reload profile to get fresh URLs and data
        final updatedUser = await _userService.getProfile();
+       if (!mounted) return;
+       
        Provider.of<AuthProvider>(context, listen: false).updateUser(updatedUser);
        
        setState(() {
-          _image = null; // Force reload from network
+          _image = null;
+          _imageBytes = null; // Force reload from network
        });
 
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
     } catch (e) {
+       if (!mounted) return;
        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
     } finally {
-       setState(() => _isLoading = false);
+       if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -80,18 +94,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? '${Config.baseUrl}/$picUrl?v=${DateTime.now().millisecondsSinceEpoch}' 
                       : null;
                    
-                   final ImageProvider? bgImage = _image != null 
-                      ? FileImage(_image!) 
-                      : (fullUrl != null ? NetworkImage(fullUrl) : null);
+                    ImageProvider bgImage;
+                    if (_imageBytes != null) {
+                      bgImage = MemoryImage(_imageBytes!);
+                    } else if (fullUrl != null) {
+                      bgImage = NetworkImage(fullUrl);
+                    } else {
+                      bgImage = const AssetImage('assets/images/defaultProfile.jpg');
+                    }
 
-                   return CircleAvatar(
-                     radius: 50,
-                     backgroundImage: bgImage,
-                     onBackgroundImageError: bgImage != null ? (exception, stackTrace) {
-                        print('Image Load Error: $exception');
-                     } : null,
-                     child: bgImage == null ? const Icon(Icons.camera_alt, size: 40) : null,
-                   );
+                    return CircleAvatar(
+                      radius: 50,
+                      backgroundImage: bgImage,
+                      onBackgroundImageError: (exception, stackTrace) {
+                        debugPrint('Image Load Error: $exception');
+                      },
+                    );
                  }
                ),
              ),
@@ -146,9 +164,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               try {
                 final authService = AuthService();
                 await authService.changePassword(oldController.text, newController.text);
+                if (!mounted) return;
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
               }
             },

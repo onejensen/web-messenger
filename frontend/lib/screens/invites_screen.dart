@@ -3,7 +3,6 @@ import '../services/data_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import 'chat_screen.dart';
-import '../config/config.dart';
 
 class InvitesScreen extends StatefulWidget {
   const InvitesScreen({super.key});
@@ -33,17 +32,11 @@ class _InvitesScreenState extends State<InvitesScreen> {
 
   Future<void> _respond(int id, String status, String senderName) async {
     try {
-      final result = await _userService.respondInvite(id, status);
-      
-      // Update global count
-      if(!mounted) return;
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      chatProvider.updatePendingInvitesCount();
-
+      final result = await chatProvider.respondInvite(id, status);
+      
       if (status == 'accepted' && result != null && result['chat'] != null) {
-         // Refresh global chat list so Home is updated
-         chatProvider.loadChats();
-         
+         if(!mounted) return;
          // Navigate to chat
          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => 
             ChatScreen(chatId: result['chat']['id'], title: senderName)
@@ -55,7 +48,10 @@ class _InvitesScreenState extends State<InvitesScreen> {
       }
     } catch (e) {
       if(!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      final errorMessage = e.toString().replaceAll('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $errorMessage'), backgroundColor: Colors.redAccent)
+      );
     }
   }
 
@@ -71,9 +67,7 @@ class _InvitesScreenState extends State<InvitesScreen> {
                 final invite = _invites[i];
                 return ListTile(
                    title: Text(invite['Sender']['username']),
-                   subtitle: Text(invite['groupName'] != null 
-                       ? 'Invitation to group: ${invite['groupName']}' 
-                       : 'Wants to chat with you'),
+                   subtitle: const Text('Wants to chat with you'),
                    trailing: Row(
                      mainAxisSize: MainAxisSize.min,
                      children: [

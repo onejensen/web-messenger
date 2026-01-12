@@ -1,27 +1,21 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/config.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
-import 'package:flutter/material.dart';
-
-class UnauthorizedException implements Exception {
-  final String message;
-  UnauthorizedException(this.message);
-  @override
-  String toString() => message;
-}
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserService {
+  final _storage = const FlutterSecureStorage();
+
   Future<String> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token') ?? '';
+    return await _storage.read(key: 'token') ?? '';
   }
 
   Future<List<dynamic>> searchUsers(String query) async {
     final token = await _getToken();
     final response = await http.get(
-      Uri.parse('${Config.baseUrl}/api/users/search?query=$query'),
+      Uri.parse('${Config.baseUrl}/api/users/search?query=${Uri.encodeComponent(query)}'),
       headers: {'Authorization': 'Bearer $token'},
     );
     if(response.statusCode == 200) return jsonDecode(response.body);
@@ -44,7 +38,6 @@ class UserService {
       headers: {'Authorization': 'Bearer $token'},
     );
     if(response.statusCode == 200) return jsonDecode(response.body);
-    if(response.statusCode == 401) throw UnauthorizedException('Session expired');
     throw Exception('Failed to get invites');
   }
   
@@ -56,15 +49,21 @@ class UserService {
       body: jsonEncode({'status': status}),
     );
     if(response.statusCode == 200) return jsonDecode(response.body);
-    throw Exception('Failed to respond invite');
+    final errorData = jsonDecode(response.body);
+    throw Exception(errorData['error'] ?? 'Failed to respond invite');
   }
-  Future<void> updateProfile(String? aboutMe, File? image) async {
+  Future<void> updateProfile(String? aboutMe, XFile? image) async {
     final token = await _getToken();
     var request = http.MultipartRequest('PUT', Uri.parse('${Config.baseUrl}/api/users/profile'));
     request.headers['Authorization'] = 'Bearer $token';
     if(aboutMe != null) request.fields['aboutMe'] = aboutMe;
     if(image != null) {
-      request.files.add(await http.MultipartFile.fromPath('profilePicture', image.path));
+      final bytes = await image.readAsBytes();
+      request.files.add(http.MultipartFile.fromBytes(
+        'profilePicture',
+        bytes,
+        filename: image.name,
+      ));
     }
     final response = await request.send();
     if(response.statusCode != 200) throw Exception('Failed to update profile');
@@ -82,9 +81,10 @@ class UserService {
 }
 
 class ChatService {
+  final _storage = const FlutterSecureStorage();
+
   Future<String> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token') ?? '';
+    return await _storage.read(key: 'token') ?? '';
   }
 
   Future<List<dynamic>> getChats() async {
@@ -94,7 +94,6 @@ class ChatService {
       headers: {'Authorization': 'Bearer $token'},
     );
     if(response.statusCode == 200) return jsonDecode(response.body);
-    if(response.statusCode == 401) throw UnauthorizedException('Session expired');
     throw Exception('Failed to load chats');
   }
 
@@ -108,7 +107,7 @@ class ChatService {
     throw Exception('Failed to load messages');
   }
 
-  Future<void> sendMessage(int chatId, String? content, File? media, String type) async {
+  Future<void> sendMessage(int chatId, String? content, XFile? media, String type) async {
     final token = await _getToken();
     var request = http.MultipartRequest('POST', Uri.parse('${Config.baseUrl}/api/chats/$chatId/messages'));
     request.headers['Authorization'] = 'Bearer $token';
@@ -116,21 +115,21 @@ class ChatService {
     request.fields['type'] = type;
     
     if(media != null) {
-      request.files.add(await http.MultipartFile.fromPath('media', media.path));
+      final bytes = await media.readAsBytes();
+      request.files.add(http.MultipartFile.fromBytes(
+        'media',
+        bytes,
+        filename: media.name,
+      ));
     }
     
     final response = await request.send();
     if(response.statusCode != 200) throw Exception('Failed to send message');
   }
 
-  Future<void> archiveChat(int id) async {
+  Future<void> deleteChat(int id) async {
     final token = await _getToken();
-    await http.put(Uri.parse('${Config.baseUrl}/api/chats/$id/archive'), headers: {'Authorization': 'Bearer $token'});
-  }
-  
-  Future<void> unarchiveChat(int id) async {
-    final token = await _getToken();
-    await http.put(Uri.parse('${Config.baseUrl}/api/chats/$id/unarchive'), headers: {'Authorization': 'Bearer $token'});
+    await http.delete(Uri.parse('${Config.baseUrl}/api/chats/$id'), headers: {'Authorization': 'Bearer $token'});
   }
 
   Future<void> markRead(int id) async {
@@ -159,18 +158,14 @@ class ChatService {
     );
     if(response.statusCode != 200) throw Exception('Failed to delete message');
   }
-
-  Future<Map<String, dynamic>> createGroupChat(String name, List<int> userIds) async {
+  
+  Future<void> archiveChat(int id) async {
     final token = await _getToken();
-    final response = await http.post(
-      Uri.parse('${Config.baseUrl}/api/chats/group'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'groupName': name, 'userIds': userIds}),
-    );
-    if (response.statusCode == 200) return jsonDecode(response.body);
-    throw Exception('Failed to create group chat');
+    await http.post(Uri.parse('${Config.baseUrl}/api/chats/$id/archive'), headers: {'Authorization': 'Bearer $token'});
+  }
+
+  Future<void> unarchiveChat(int id) async {
+    final token = await _getToken();
+    await http.post(Uri.parse('${Config.baseUrl}/api/chats/$id/unarchive'), headers: {'Authorization': 'Bearer $token'});
   }
 }

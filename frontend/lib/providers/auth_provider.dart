@@ -23,14 +23,11 @@ class AuthProvider with ChangeNotifier {
     if (token != null) {
       final user = await _authService.getUser();
       if (user != null) {
-        _isAuthenticated = true;
-        _user = user;
-        _token = token;
-        notifyListeners();
-      } else {
-        // Token exists but user doesn't or is invalid
-        await logout();
-      }
+      _isAuthenticated = true;
+      _user = user;
+      _token = token;
+      notifyListeners();
+          }
     }
   }
 
@@ -63,49 +60,41 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
+  Future<void> verifyRegistration(String email, String code) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      debugPrint('AuthProvider: Verifying $email with code $code');
+      final data = await _authService.verifyRegistration(email, code);
+      debugPrint('AuthProvider: Verification response received. Token: ${data['token'] != null}');
+      if (data['token'] != null) {
+        _isAuthenticated = true;
+        _user = data['user'];
+        _token = data['token'];
+        debugPrint('AuthProvider: State updated. isAuthenticated: $_isAuthenticated');
+      }
+    } catch (e) {
+      debugPrint('AuthProvider: Error during verification: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> resendVerification(String email) async {
+    try {
+      await _authService.resendVerification(email);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     await _authService.logout();
     _isAuthenticated = false;
     _user = null;
     _token = null;
     notifyListeners();
-  }
-  Future<void> verifyRegistration(String email, String code) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      await _authService.verifyRegistration(email, code);
-    } catch (e) {
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> requestPasswordReset(String email) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      await _authService.requestPasswordReset(email);
-    } catch (e) {
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> resetPassword(String token, String newPassword) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      await _authService.resetPassword(token, newPassword);
-    } catch (e) {
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 }

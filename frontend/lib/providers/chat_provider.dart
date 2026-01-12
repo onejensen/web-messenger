@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../services/data_service.dart';
 import '../config/config.dart';
-import 'dart:io';
 
 class ChatProvider with ChangeNotifier {
   final ChatService _chatService = ChatService();
@@ -14,6 +13,8 @@ class ChatProvider with ChangeNotifier {
   int _pendingInvites = 0;
 
   List<dynamic> get chats => _chats;
+  List<dynamic> get activeChats => _chats.where((c) => (c['isArchived'] == false || c['isArchived'] == null) && (c['isDeleted'] == false || c['isDeleted'] == null)).toList();
+  List<dynamic> get archivedChats => _chats.where((c) => c['isArchived'] == true && (c['isDeleted'] == false || c['isDeleted'] == null)).toList();
   List<dynamic> get messages => _messages;
   int get pendingInvites => _pendingInvites;
 
@@ -26,32 +27,89 @@ class ChatProvider with ChangeNotifier {
     _socket = IO.io(Config.baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
+      'forceNew': true, // Essential for switch accounts / session reset
       'extraHeaders': {'Authorization': 'Bearer $userToken'} // Auth
     });
     _socket!.connect();
     
     _socket!.onConnect((_) {
-      print('Socket connected');
-      // Identify self
+      debugPrint('ChatProvider: Socket Connected');
       _socket!.emit('identify', userId);
-      updatePendingInvitesCount(); // Sync count on connect
-      // Re-join active chats
-      for(var chat in _chats) {
-        _socket!.emit('join_chat', chat['id']);
-      }
+      
+      // Give the server a moment to join the personal room, then join chats
+      Future.delayed(const Duration(milliseconds: 500), () {
+          for(var chat in _chats) {
+            debugPrint('ChatProvider: Re-joining chat ${chat['id']}');
+            _socket!.emit('join_chat', chat['id']);
+          }
+      });
     });
 
-    _socket!.on('new_invite', (_) {
-      _pendingInvites++;
-      notifyListeners();
+    _socket!.onDisconnect((_) => debugPrint('ChatProvider: Socket Disconnected'));
+    _socket!.onConnectError((err) => debugPrint('ChatProvider: Socket Connect Error: $err'));
+
+    _socket!.on('new_invite', (data) {
+      debugPrint('ChatProvider: Received new_invite: $data. Refreshing count...');
+      updatePendingInvitesCount();
     });
     
     _socket!.on('chat_created', (data) {
-       print('New chat created: $data');
+       debugPrint('ChatProvider: Received chat_created: $data');
+       if (data['id'] != null) {
+         debugPrint('ChatProvider: Joining new chat room ${data['id']}');
+         _socket!.emit('join_chat', data['id']);
+       }
        loadChats();
+    });
+    
+    _socket!.on('new_message', (data) {
+       debugPrint('ChatProvider: Received new_message in Room ${data['ChatId']}: ${data['content']}');
+       if(_currentChatId != null && 
+          data['ChatId'].toString() == _currentChatId.toString()) {
+         
+         // Deduplicate: check if message ID already exists (from optimistic update)
+         int existingIdx = _messages.indexWhere((m) => m['id'].toString() == data['id'].toString());
+         if(existingIdx == -1) {
+            // Check for optimistic message match (same user, same content, temp id)
+            int optIdx = _messages.indexWhere((m) => 
+               m['id'].toString().startsWith('temp_') && 
+               m['content'] == data['content'] &&
+               m['User']['id'].toString() == data['User']['id'].toString()
+            );
+
+            if(optIdx != -1) {
+               debugPrint('ChatProvider: Replacing optimistic message $optIdx with server message ${data['id']}');
+               _messages[optIdx] = data;
+            } else {
+               _messages.add(data);
+            }
+            markRead(_currentChatId!);
+            notifyListeners();
+         } else {
+            // Update the message (e.g. change status from 'sending' to server-confirmed state)
+            _messages[existingIdx] = data;
+            notifyListeners();
+         }
+       }
+       
+       int idx = _chats.indexWhere((c) => c['id'].toString() == data['ChatId'].toString());
+       if(idx != -1) {
+          _chats[idx]['lastMessageAt'] = DateTime.now().toIso8601String();
+          _chats[idx]['lastMessage'] = data['content']; 
+          if(_currentChatId == null || _currentChatId.toString() != data['ChatId'].toString()) {
+             _chats[idx]['unreadCount'] = (_chats[idx]['unreadCount'] ?? 0) + 1;
+          }
+          var chat = _chats.removeAt(idx);
+          _chats.insert(0, chat);
+          notifyListeners();
+       } else {
+          debugPrint('ChatProvider: Message for unknown chat, reloading chat list');
+          loadChats();
+       }
     });
 
     _socket!.on('update_message', (data) {
+       debugPrint('ChatProvider: Received update_message');
        int idx = _messages.indexWhere((m) => m['id'].toString() == data['id'].toString());
        if(idx != -1) {
           _messages[idx] = data;
@@ -60,55 +118,35 @@ class ChatProvider with ChangeNotifier {
     });
 
     _socket!.on('delete_message', (data) {
+       debugPrint('ChatProvider: Received delete_message');
        _messages.removeWhere((m) => m['id'].toString() == data['id'].toString());
        notifyListeners();
     });
 
     _socket!.on('typing', (data) {
-       if(_currentChatId != null && 
-          data['chatId'].toString() == _currentChatId.toString()) {
+       if(_currentChatId != null && data['chatId'].toString() == _currentChatId.toString()) {
           _typingUsers[data['username']] = true;
           notifyListeners();
        }
     });
 
     _socket!.on('stop_typing', (data) {
-       if(_currentChatId != null && 
-          data['chatId'].toString() == _currentChatId.toString()) {
-          _typingUsers.remove(data['username']);
-          notifyListeners();
-       }
+       _typingUsers.remove(data['username']);
+       notifyListeners();
     });
 
-    _socket!.on('new_message', (data) {
-        // ... (existing code for new_message) ...
-        // Debug incoming message
-       print('Received new_message: $data');
-       if(_currentChatId != null && 
-          data['ChatId'].toString() == _currentChatId.toString()) {
-         _messages.add(data);
-         // Mark as read immediately if viewing
-         markRead(_currentChatId!);
+    _socket!.on('messages_read', (data) {
+      debugPrint('ChatProvider: Received messages_read for Chat ${data['chatId']}');
+      if(_currentChatId != null && _currentChatId.toString() == data['chatId'].toString()) {
+         // Update all messages not sent by the 'readBy' person to 'read'
+         for(var i = 0; i < _messages.length; i++) {
+            if(_messages[i]['UserId'].toString() != data['readBy'].toString()) {
+               _messages[i]['status'] = 'read';
+            }
+         }
          notifyListeners();
-       }
-       // Also update chat list lastMessage
-       int idx = _chats.indexWhere((c) => c['id'].toString() == data['ChatId'].toString());
-       if(idx != -1) {
-          _chats[idx]['lastMessageAt'] = DateTime.now().toIso8601String();
-          // Update unread count if not in this chat
-          if(_currentChatId == null || _currentChatId.toString() != data['ChatId'].toString()) {
-             _chats[idx]['unreadCount'] = (_chats[idx]['unreadCount'] ?? 0) + 1;
-          }
-          // Move to top
-          var chat = _chats.removeAt(idx);
-          _chats.insert(0, chat);
-          notifyListeners();
-       } else {
-          // New chat? Reload chats
-          loadChats();
-       }
+      }
     });
-
   }
 
   final Map<String, bool> _typingUsers = {};
@@ -143,33 +181,78 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  Future<void> archiveChat(int chatId) async {
+  Future<void> deleteChat(int chatId) async {
     try {
-      await _chatService.archiveChat(chatId);
-      _chats.removeWhere((c) => c['id'] == chatId);
-      notifyListeners();
+      await _chatService.deleteChat(chatId);
+      // Update local state isDeleted
+      int idx = _chats.indexWhere((c) => c['id'] == chatId);
+      if(idx != -1) {
+        _chats[idx]['isDeleted'] = true;
+        notifyListeners();
+      }
     } catch (e) {
       print(e);
     }
   }
 
-  // ... (rest of the class) ...
+  Future<Map<String, dynamic>?> respondInvite(int id, String status) async {
+    try {
+      final UserService userService = UserService();
+      final result = await userService.respondInvite(id, status);
+      await updatePendingInvitesCount();
+      if(status == 'accepted') {
+        await loadChats();
+      }
+      return result;
+    } catch (e) {
+      print(e);
+      rethrow;
+    }
+  }
+
+  Future<void> archiveChat(int chatId) async {
+    try {
+      await _chatService.archiveChat(chatId);
+      int idx = _chats.indexWhere((c) => c['id'] == chatId);
+      if(idx != -1) {
+        _chats[idx]['isArchived'] = true;
+        notifyListeners();
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> unarchiveChat(int chatId) async {
+    try {
+      await _chatService.unarchiveChat(chatId);
+      int idx = _chats.indexWhere((c) => c['id'] == chatId);
+      if(idx != -1) {
+        _chats[idx]['isArchived'] = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
   Future<void> updatePendingInvitesCount() async {
      try {
        // Optional: Fetch actual count from API to sync
         final UserService userService = UserService();
         final invites = await userService.getInvites();
         _pendingInvites = invites.length;
+        debugPrint('ChatProvider: updatePendingInvitesCount. Fetched ${invites.length} invites. pendingInvites=$_pendingInvites');
         notifyListeners();
      } catch(e) {
-        if(e is UnauthorizedException) rethrow;
-        print(e);
+       print(e);
      }
   }
 
   Future<void> loadChats() async {
     try {
       _chats = await _chatService.getChats();
+      debugPrint('ChatProvider: Loaded ${_chats.length} chats');
       // Join all chat rooms to receive updates
       if(_socket != null) {
         for(var chat in _chats) {
@@ -178,7 +261,6 @@ class ChatProvider with ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      if (e is UnauthorizedException) rethrow;
       print(e);
     }
   }
@@ -211,12 +293,37 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  Future<void> sendMessage(String text, File? media, String type) async {
-    if(_currentChatId == null) return;
+  Future<void> sendMessage(String text, XFile? media, String type, Map<String, dynamic> currentUser) async {
+    if(_currentChatId == null) {
+       debugPrint('ChatProvider: Error - _currentChatId is null, cannot send message');
+       return;
+    }
+    
+    // Optimistic Update
+    final tempId = DateTime.now().millisecondsSinceEpoch;
+    final optimisticMsg = {
+      'id': 'temp_$tempId',
+      'ChatId': _currentChatId,
+      'content': text,
+      'type': type,
+      'status': 'sending',
+      'createdAt': DateTime.now().toIso8601String(),
+      'User': {
+        'id': currentUser['id'],
+        'username': currentUser['username'],
+        'profilePicture': currentUser['profilePicture']
+      }
+    };
+    _messages.add(optimisticMsg);
+    notifyListeners();
+
     try {
+      debugPrint('ChatProvider: Sending message to Chat $_currentChatId: $text');
       await _chatService.sendMessage(_currentChatId!, text, media, type);
-      // Socket will handle incoming new message event
     } catch (e) {
+      // Remove optimistic message on failure
+      _messages.removeWhere((m) => m['id'] == 'temp_$tempId');
+      notifyListeners();
       print(e);
       rethrow;
     }

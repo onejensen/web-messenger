@@ -4,10 +4,8 @@ import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/verify_screen.dart';
-import 'screens/forgot_password_screen.dart';
-import 'screens/new_group_screen.dart';
+import 'screens/verification_screen.dart';
+import 'screens/home_screen.dart'; // Placeholder
 
 void main() {
   runApp(const MyApp());
@@ -24,15 +22,14 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: MaterialApp(
-        debugShowCheckedModeBanner: false,
         title: 'Kood/Messenger',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData.dark().copyWith(
           primaryColor: Colors.deepPurpleAccent,
           colorScheme: const ColorScheme.dark(
             primary: Colors.deepPurpleAccent,
             secondary: Colors.tealAccent,
             surface: Color(0xFF1E1E2C),
-            background: Color(0xFF121212),
           ),
           scaffoldBackgroundColor: const Color(0xFF121212),
           inputDecorationTheme: InputDecorationTheme(
@@ -62,15 +59,10 @@ class MyApp extends StatelessWidget {
           LoginScreen.routeName: (ctx) => const LoginScreen(),
           RegisterScreen.routeName: (ctx) => const RegisterScreen(),
           HomeScreen.routeName: (ctx) => const HomeScreen(),
-          ForgotPasswordScreen.routeName: (ctx) => const ForgotPasswordScreen(),
-          NewGroupScreen.routeName: (ctx) => const NewGroupScreen(),
-        },
-        onGenerateRoute: (settings) {
-          if (settings.name == VerificationScreen.routeName) {
-            final args = settings.arguments as String;
-            return MaterialPageRoute(builder: (ctx) => VerificationScreen(email: args));
-          }
-          return null;
+          VerificationScreen.routeName: (ctx) {
+            final args = ModalRoute.of(ctx)!.settings.arguments as String;
+            return VerificationScreen(email: args);
+          },
         },
       ),
     );

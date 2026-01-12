@@ -1,67 +1,64 @@
-const express = require('express');
-const router = express.Router();
+const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
-const crypto = require('crypto');
-const authMiddleware = require('../middleware/authMiddleware');
-const { sendVerificationEmail } = require('../utils/mailer');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_123';
+const { Op } = require('sequelize');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email');
 
 // Register
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) return res.status(400).json({ error: 'Email already in use' });
+    // Password Strength Check
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char.' 
+      });
+    }
 
-    const existingUsername = await User.findOne({ where: { username } });
-    if (existingUsername) return res.status(400).json({ error: 'Username already in use' });
+    // Check existing
+    const existingUser = await User.findOne({
+      where: {
+        [Op.or]: [{ username }, { email }]
+      }
+    });
+    if (existingUser) {
+      if(existingUser.username === username) return res.status(400).json({ error: 'Username taken' });
+      return res.status(400).json({ error: 'Email already registered' });
+    }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    // Requirement says "User's email is verified before creating an account"
-    // Usually this means a "pending" state. We'll use isVerified flag.
-    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code for frontend VerifyScreen
+    // Generate Verification Code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    await User.create({
+    // Hash Password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create User (Encryption hook runs automatically for profile fields if added)
+    const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
-      verificationToken
+      verificationCode: verificationCode
     });
 
-    console.log(`Verification code for ${email}: ${verificationToken}`);
-
+    // Send Real Email
     try {
-      await sendVerificationEmail(email, verificationToken);
-    } catch (mailErr) {
-      console.error('Error sending verification email:', mailErr);
-      // We still return 201 because the user is created, but we log the error
+      await sendVerificationEmail(email, verificationCode);
+    } catch (err) {
+      console.error('Initial email send failed:', err);
+      // We don't fail registration if email fails, user can "resend" later
     }
 
-    res.status(201).json({ message: 'User registered. Please verify your email.', code: verificationToken });
+    res.status(201).json({ 
+      message: 'User registered. Please check your email for the verification code.',
+      user: { id: newUser.id, username: newUser.username, email: newUser.email }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-// Verify Registration
-router.post('/verify-registration', async (req, res) => {
-    try {
-        const { email, code } = req.body;
-        const user = await User.findOne({ where: { email, verificationToken: code } });
-        if (!user) return res.status(400).json({ error: 'Invalid verification code' });
-
-        user.isVerified = true;
-        user.verificationToken = null;
-        await user.save();
-
-        res.json({ message: 'Email verified successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
 });
 
 // Login
@@ -69,69 +66,154 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
-
     if (!user) return res.status(400).json({ error: 'User not found' });
-    if (!user.isVerified) return res.status(400).json({ error: 'Please verify your email first' });
+
+    if (!user.isVerified) {
+      return res.status(403).json({ error: 'Email not verified', email: user.email });
+    }
 
     const validPass = await bcrypt.compare(password, user.password);
     if (!validPass) return res.status(400).json({ error: 'Invalid password' });
 
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, username: user.username, email: user.email, profilePic: user.profilePic, aboutMe: user.aboutMe } });
+    // Create Token
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'secret_key_123', { expiresIn: '7d' });
+
+    res.json({ token, user: { id: user.id, username: user.username, email: user.email, profilePicture: user.profilePicture, aboutMe: user.aboutMe } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Change Password
-router.put('/change-password', authMiddleware, async (req, res) => {
-    try {
-        const { oldPassword, newPassword } = req.body;
-        const user = await User.findByPk(req.user.id);
-        
-        const validPass = await bcrypt.compare(oldPassword, user.password);
-        if (!validPass) return res.status(400).json({ error: 'Invalid old password' });
+// Verify Registration
+router.post('/verify-registration', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    const user = await User.findOne({ where: { email, verificationCode: code } });
+    if (!user) return res.status(400).json({ error: 'Invalid verification code' });
 
-        user.password = await bcrypt.hash(newPassword, 10);
-        await user.save();
-        res.json({ message: 'Password changed successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    user.isVerified = true;
+    user.verificationCode = null;
+    await user.save();
+
+    // Create Token to allow auto-login
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'secret_key_123', { expiresIn: '7d' });
+
+    res.json({ 
+      message: 'Email verified successfully.',
+      token,
+      user: { id: user.id, username: user.username, email: user.email, profilePicture: user.profilePicture, aboutMe: user.aboutMe }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Resend Verification Code
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.isVerified) return res.status(400).json({ error: 'Email already verified' });
+
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationCode = newCode;
+    await user.save();
+
+    await sendVerificationEmail(email, newCode);
+    res.json({ message: 'New verification code sent' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Forgot Password
 router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(400).json({ error: 'User with this email does not exist' });
+
+    const resetToken = Math.random().toString(36).substring(2, 10);
+    user.resetToken = resetToken;
+    user.resetTokenExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // Send Real Email
     try {
-        const { email } = req.body;
-        const user = await User.findOne({ where: { email } });
-        if (!user) return res.status(400).json({ error: 'User not found' });
-
-        const resetToken = crypto.randomBytes(20).toString('hex');
-        user.resetToken = resetToken;
-        await user.save();
-
-        res.json({ message: 'Password reset token generated', resetToken });
+      await sendPasswordResetEmail(email, resetToken);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+      console.error('Failed to send reset email:', err);
+      return res.status(500).json({ error: 'Failed to send reset email. Please try again later.' });
     }
+
+    res.json({ message: 'Password reset email sent' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Reset Password
 router.post('/reset-password', async (req, res) => {
-    try {
-        const { token, newPassword } = req.body;
-        const user = await User.findOne({ where: { resetToken: token } });
-        if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
+  try {
+    const { token, newPassword } = req.body;
+    const user = await User.findOne({ 
+      where: { 
+        resetToken: token,
+        resetTokenExpires: { [Op.gt]: Date.now() }
+      } 
+    });
+    if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' });
 
-        user.password = await bcrypt.hash(newPassword, 10);
-        user.resetToken = null;
-        await user.save();
-
-        res.json({ message: 'Password reset successful' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    // Password Strength Check
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char.' 
+      });
     }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetToken = null;
+    user.resetTokenExpires = null;
+    await user.save();
+
+    res.json({ message: 'Password has been reset successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const verifyToken = require('../middleware/authMiddleware');
+
+// Change Password
+router.put('/change-password', verifyToken, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(401).json({ error: 'User not found' });
+
+    const validPass = await bcrypt.compare(oldPassword, user.password);
+    if (!validPass) return res.status(400).json({ error: 'Invalid old password' });
+
+    // Password Strength Check
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ 
+        error: 'New password must be at least 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char.' 
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

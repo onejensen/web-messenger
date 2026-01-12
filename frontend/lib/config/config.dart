@@ -3,9 +3,11 @@ import 'package:flutter/foundation.dart';
 
 class Config {
   static String get baseUrl {
+    // For reviewers: 
+    // - Use 'localhost' if running the backend on the same machine.
+    // - Use your PC's local IP (e.g. 192.168.1.XX) if running on a real phone.
     if (kIsWeb) return 'http://localhost:3000';
-    // 192.168.1.60 is your machine's local IP
-    // This allows physical devices on the same WiFi to connect without ADB reverse
-    return 'http://192.168.1.60:3000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:3000'; // Default for Android Emulator
+    return 'http://localhost:3000';
   }
 }
