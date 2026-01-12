@@ -43,30 +43,36 @@ A robust, full-stack Flutter messenger application with a Node.js backend, built
 - **Backend**: Node.js, Express, Sequelize (ORM), SQLite (Local Storage) / PostgreSQL (Optional), Socket.io, Multer.
 - **Database**: SQLite by default for easy setup and testing.
 
-## 🛠️ Getting Started
+## 🕹️ Try it Out
 
-### Prerequisites
-- **Node.js**: Versions 16+ recommended.
-- **Flutter SDK**: For building or running from source.
-- **Android Device/Emulator**: To run the mobile version.
+### 🌐 Live Demo (Global Testing)
+You can test the latest stable version of the web messenger directly in your browser:  
+👉 **[Open Web Messenger](https://onejensen.github.io/web-messenger/)**
 
-### 1. Run the Backend
+> [!NOTE]
+> The live demo is connected to a production backend hosted on Render. You can create an account and start chatting immediately.
+
+---
+
+### 💻 Local Development (Manual Testing)
+If you prefer to run everything locally (Backend + Frontend):
+
+#### 1. Run the Backend
 ```bash
 cd backend
 npm install
 npm start # Starts server on http://localhost:3000
 ```
-*Note: Make sure to configure your `.env` file with `JWT_SECRET` and `ENCRYPTION_KEY`.*
+*Note: Sequelize will automatically initialize an SQLite database (`database.sqlite`) in the `backend` folder.*
 
-### 2. Run the Frontend
+#### 2. Run the Frontend
 ```bash
 cd frontend
 flutter pub get
-flutter run
+flutter run -d chrome # Or your preferred device
 ```
 
-### 3. Build & Deploy Web
-Use the provided script to deploy to GitHub Pages:
+#### 3. (Optional) Deploy your own Web version
 ```bash
 ./deploy_web.sh
 ```
