@@ -1,25 +1,30 @@
-const { Resend } = require('resend');
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+const axios = require('axios');
 
 const sendEmail = async (options) => {
   try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'Kood Messenger <onboarding@resend.dev>',
-      to: options.email,
-      subject: options.subject,
-      text: options.message,
-      html: options.html,
-    });
+    const response = await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: { 
+          name: 'Kood Messenger', 
+          email: process.env.EMAIL_USER // This must be verified in Brevo
+        },
+        to: [{ email: options.email }],
+        subject: options.subject,
+        textContent: options.message,
+        htmlContent: options.html,
+      },
+      {
+        headers: {
+          'api-key': process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    if (error) {
-      console.error('Resend API error:', error);
-      throw new Error('Email could not be sent');
-    }
-
-    console.log(`Email sent to: ${options.email}. ID: ${data.id}`);
+    console.log(`Email sent to: ${options.email}. Status: ${response.status}`);
   } catch (error) {
-    console.error('Email sending failed:', error);
+    console.error('Brevo API error:', error.response ? error.response.data : error.message);
     throw new Error('Email could not be sent');
   }
 };
