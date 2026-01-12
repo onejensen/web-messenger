@@ -34,6 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<int> _searchResults = [];
   int _currentSearchResultIndex = -1;
   Timer? _typingTimer;
+  bool _isTyping = false;
 
   @override
   void initState() {
@@ -44,13 +45,23 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollToBottom();
 
       _controller.addListener(() {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
         if(_controller.text.isNotEmpty) {
-           final auth = Provider.of<AuthProvider>(context, listen: false);
-           chatProvider.setTyping(true, auth.user!['username']);
+           if (!_isTyping) {
+             _isTyping = true;
+             chatProvider.setTyping(true, auth.user!['username']);
+           }
            _typingTimer?.cancel();
            _typingTimer = Timer(const Duration(seconds: 2), () {
+              _isTyping = false;
               chatProvider.setTyping(false, auth.user!['username']);
            });
+        } else {
+           if (_isTyping) {
+             _isTyping = false;
+             _typingTimer?.cancel();
+             chatProvider.setTyping(false, auth.user!['username']);
+           }
         }
       });
     });
@@ -69,7 +80,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 100,
+        _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
@@ -101,15 +112,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-  }
 
   void _jumpToResult(int index) {
     if (index < 0 || index >= _searchResults.length) return;
@@ -304,6 +306,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                   return const Icon(Icons.done_all, size: 12, color: Colors.white54);
                                 } else if (msg['status'] == 'sending') {
                                   return const Icon(Icons.access_time, size: 12, color: Colors.white54);
+                                } else if (msg['status'] == 'failed') {
+                                  return GestureDetector(
+                                    onTap: () => Provider.of<ChatProvider>(context, listen: false).retrySendMessage(msg),
+                                    child: const Icon(Icons.error_outline, size: 14, color: Colors.redAccent),
+                                  );
                                 } else {
                                   return const Icon(Icons.done, size: 12, color: Colors.white54);
                                 }

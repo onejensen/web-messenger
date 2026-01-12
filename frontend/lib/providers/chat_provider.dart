@@ -353,11 +353,39 @@ class ChatProvider with ChangeNotifier {
       debugPrint('ChatProvider: Sending message to Chat $_currentChatId: $text');
       await _chatService.sendMessage(_currentChatId!, text, media, type);
     } catch (e) {
-      // Remove optimistic message on failure
-      _messages.removeWhere((m) => m['id'] == 'temp_$tempId');
-      notifyListeners();
+      // Mark as failed instead of removing
+      int idx = _messages.indexWhere((m) => m['id'] == 'temp_$tempId');
+      if (idx != -1) {
+        _messages[idx]['status'] = 'failed';
+        notifyListeners();
+      }
       print(e);
       rethrow;
+    }
+  }
+
+  Future<void> retrySendMessage(Map<String, dynamic> msg) async {
+    final chatId = msg['ChatId'];
+    final content = msg['content'];
+    final type = msg['type'];
+    final tempId = msg['id'];
+
+    // Mark as sending again
+    int idx = _messages.indexWhere((m) => m['id'] == tempId);
+    if (idx != -1) {
+      _messages[idx]['status'] = 'sending';
+      notifyListeners();
+    }
+
+    try {
+      await _chatService.sendMessage(chatId, content, null, type); // For now, retry only text. Media might need more logic if it wasn't uploaded.
+    } catch (e) {
+      int idx = _messages.indexWhere((m) => m['id'] == tempId);
+      if (idx != -1) {
+        _messages[idx]['status'] = 'failed';
+        notifyListeners();
+      }
+      print(e);
     }
   }
   
