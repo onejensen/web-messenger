@@ -12,7 +12,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "*", // Keep it simple for now or use [ "http://localhost:3000", "https://onejensen.github.io" ]
     methods: ["GET", "POST"]
   }
 });
@@ -93,28 +93,29 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     
-    // Check for missing columns in Chats table (SQLite specific check)
-    // This handles cases where the reviewer has an old database file
-    const [results] = await sequelize.query("PRAGMA table_info(Chats)");
-    const columns = results.map(c => c.name);
-    
-    if (results.length > 0) {
-        if (!columns.includes('deletedBy')) {
-            console.log('Adding missing column deletedBy to Chats table');
-            await sequelize.query("ALTER TABLE Chats ADD COLUMN deletedBy TEXT DEFAULT '[]'");
+    if (sequelize.getDialect() === 'sqlite') {
+        // Check for missing columns in Chats table (SQLite specific check)
+        const [results] = await sequelize.query("PRAGMA table_info(Chats)");
+        const columns = results.map(c => c.name);
+        
+        if (results.length > 0) {
+            if (!columns.includes('deletedBy')) {
+                console.log('Adding missing column deletedBy to Chats table');
+                await sequelize.query("ALTER TABLE Chats ADD COLUMN deletedBy TEXT DEFAULT '[]'");
+            }
+            if (!columns.includes('archivedBy')) {
+                console.log('Adding missing column archivedBy to Chats table');
+                await sequelize.query("ALTER TABLE Chats ADD COLUMN archivedBy TEXT DEFAULT '[]'");
+            }
         }
-        if (!columns.includes('archivedBy')) {
-            console.log('Adding missing column archivedBy to Chats table');
-            await sequelize.query("ALTER TABLE Chats ADD COLUMN archivedBy TEXT DEFAULT '[]'");
-        }
-    }
 
-    // Also check Invites table for groupName (added for group chats)
-    const [inviteResults] = await sequelize.query("PRAGMA table_info(Invites)");
-    const inviteColumns = inviteResults.map(c => c.name);
-    if (inviteResults.length > 0 && !inviteColumns.includes('groupName')) {
-        console.log('Adding missing column groupName to Invites table');
-        await sequelize.query("ALTER TABLE Invites ADD COLUMN groupName TEXT");
+        // Also check Invites table for groupName (added for group chats)
+        const [inviteResults] = await sequelize.query("PRAGMA table_info(Invites)");
+        const inviteColumns = inviteResults.map(c => c.name);
+        if (inviteResults.length > 0 && !inviteColumns.includes('groupName')) {
+            console.log('Adding missing column groupName to Invites table');
+            await sequelize.query("ALTER TABLE Invites ADD COLUMN groupName TEXT");
+        }
     }
 
     await sequelize.sync(); 

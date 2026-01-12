@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../services/data_service.dart';
 import '../config/config.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatProvider with ChangeNotifier {
   final ChatService _chatService = ChatService();
