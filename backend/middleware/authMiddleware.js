@@ -7,18 +7,27 @@ const verifyToken = async (req, res, next) => {
 
   try {
     // Improved token extraction
+    // Extremely robust token extraction
+    console.log(`Backend: Raw Auth Header: "${token}"`);
+    
     let bearerToken = token;
-    if (token.startsWith('Bearer ')) {
-      bearerToken = token.split(' ')[1];
+    if (token.toLowerCase().startsWith('bearer')) {
+      // Remove 'bearer' prefix case-insensitively and trim
+      bearerToken = token.replace(/^bearer/i, '').trim();
     }
 
-    // If token is missing, empty, or string "null" (common from some frontend libs)
+    // If double 'bearer' was sent (e.g., "Bearer Bearer <token>")
+    if (bearerToken.toLowerCase().startsWith('bearer')) {
+      bearerToken = bearerToken.replace(/^bearer/i, '').trim();
+    }
+
+    // If token is missing, empty, or string "null"/"undefined"
     if (!bearerToken || bearerToken === '' || bearerToken === 'null' || bearerToken === 'undefined') {
-      console.log('Backend: Authorization header present but token is empty/invalid.');
+      console.log('Backend: Auth header present but token is effectively empty.');
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    console.log(`Backend: Verifying Token: ${bearerToken.substring(0, 10)}...`);
+    console.log(`Backend: Verifying Clean Token: "${bearerToken.substring(0, 15)}..."`);
     const verified = jwt.verify(bearerToken, process.env.JWT_SECRET || 'secret_key_123');
     console.log(`Backend: Token Verified for User ID: ${verified.id}`);
     

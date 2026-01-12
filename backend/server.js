@@ -41,14 +41,24 @@ io.on('connection', (socket) => {
   
   // Auto-identify via token in headers OR handshake.auth (better for Web)
   const authHeader = socket.handshake.headers['authorization'];
-  const authToken = socket.handshake.auth ? socket.handshake.auth.token : null;
+  const authHandshake = socket.handshake.auth ? socket.handshake.auth.token : null;
   
-  const token = (authHeader && authHeader.startsWith('Bearer ')) 
-    ? authHeader.split(' ')[1] 
-    : authToken;
+  let rawToken = authHeader || authHandshake;
+  let token = rawToken;
+
+  if (token && typeof token === 'string') {
+    // Robust cleaning
+    if (token.toLowerCase().startsWith('bearer')) {
+      token = token.replace(/^bearer/i, '').trim();
+    }
+    if (token.toLowerCase().startsWith('bearer')) {
+      token = token.replace(/^bearer/i, '').trim();
+    }
+  }
 
   if (token && token !== 'null' && token !== 'undefined' && token !== '') {
       try {
+          console.log(`Socket ${socket.id}: Verifying token "${token.substring(0, 15)}..."`);
           const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
           const userId = decoded.id;
           socket.userId = userId; 
