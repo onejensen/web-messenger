@@ -114,7 +114,8 @@ router.post('/verify-registration', async (req, res) => {
 // Resend Verification Code
 router.post('/resend-verification', async (req, res) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
+    email = email.toLowerCase();
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.isVerified) return res.status(400).json({ error: 'Email already verified' });
@@ -136,7 +137,8 @@ router.post('/resend-verification', async (req, res) => {
 // Forgot Password
 router.post('/forgot-password', async (req, res) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
+    email = email.toLowerCase();
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(400).json({ error: 'User with this email does not exist' });
 
