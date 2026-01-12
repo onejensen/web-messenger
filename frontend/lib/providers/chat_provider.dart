@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../services/data_service.dart';
 import '../config/config.dart';
@@ -424,10 +426,8 @@ class ChatProvider with ChangeNotifier {
     _typingUsers.clear();
   }
 
-  void disconnect() {
-    if(_socket != null) {
-      _socket!.disconnect();
-      _socket = null;
-    }
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
   }
 }
