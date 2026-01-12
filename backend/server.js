@@ -32,7 +32,12 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes Placeholders
 app.get('/', (req, res) => {
-  res.send('Messenger API Running');
+  res.json({
+    name: 'Messenger API',
+    status: 'Running',
+    version: require('./package.json').version,
+    node_env: process.env.NODE_ENV || 'development'
+  });
 });
 
 // Socket.io
