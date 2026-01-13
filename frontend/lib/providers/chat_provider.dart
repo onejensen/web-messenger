@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../services/data_service.dart';
 import '../config/config.dart';
-import 'package:image_picker/image_picker.dart';
 
 class ChatProvider with ChangeNotifier {
   final ChatService _chatService = ChatService();
@@ -225,8 +223,6 @@ class ChatProvider with ChangeNotifier {
     }
 
     if (_currentChatId == null) return;
-    final token = await _getToken();
-    if (token == null) throw Exception('Authentication required');
     
     try {
       await _chatService.deleteMessage(_currentChatId!, int.parse(msgId.toString()));
@@ -441,10 +437,5 @@ class ChatProvider with ChangeNotifier {
       _socket!.disconnect();
       _socket = null;
     }
-  }
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
   }
 }
