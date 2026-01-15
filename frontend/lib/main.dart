@@ -47,7 +47,7 @@ void main() {
   // Custom error widget for UI crashes
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return GlobalErrorDisplay(
-      errorDetails: kDebugMode ? details : null,
+      errorDetails: details, // Always show details for this demonstration
       onRetry: () {
          runApp(const RestartWidget(child: MyApp()));
       },

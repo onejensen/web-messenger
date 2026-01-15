@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int? _selectedChatId;
   String? _activeTitle;
   bool _isSelectedChatGroup = false;
+  bool _isCrashing = false;
 
   @override
   void initState() {
@@ -67,6 +68,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (_isCrashing) {
+      throw FlutterError('Simulated UI crash for demonstration');
+    }
     return ResponsiveLayout(
       mobileLayout: _buildMobileLayout(context),
       desktopLayout: _buildDesktopLayout(context),
