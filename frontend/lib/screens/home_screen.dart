@@ -140,21 +140,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final chat = Provider.of<ChatProvider>(context, listen: false);
 
     return AppBar(
-      centerTitle: true,
-      title: InkWell(
-        onDoubleTap: () {
-          debugPrint('Simulating UI Crash...');
-          throw FlutterError('Simulated UI crash for demonstration');
-        },
-        onLongPress: () {
-          debugPrint('Simulating Async Error...');
-          Future.error('Simulated asynchronous exception for demonstration');
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child: const Text('Kood/Sisu Messenger'),
-        ),
-      ),
+      title: const Text('Kood/Sisu Messenger'),
       bottom: isMobile
           ? const TabBar(
               tabs: [
@@ -165,6 +151,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             )
           : null,
       actions: [
+        IconButton(
+          icon: const Icon(Icons.bug_report, color: Colors.orangeAccent),
+          tooltip: 'Test UI Crash',
+          onPressed: () {
+            debugPrint('Simulating UI Crash...');
+            throw FlutterError('Simulated UI crash for demonstration');
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+          tooltip: 'Test Async Error',
+          onPressed: () {
+            debugPrint('Simulating Async Error...');
+            Future.error('Simulated asynchronous exception for demonstration');
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.refresh),
           tooltip: 'Sync',
