@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _isCrashing = false;
     WidgetsBinding.instance.addObserver(this);
     // Use post-frame callback to trigger init safely
     WidgetsBinding.instance.addPostFrameCallback((_) {
