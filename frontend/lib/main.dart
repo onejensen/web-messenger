@@ -15,8 +15,11 @@ final GlobalKey<ScaffoldMessengerState> messengerKey = GlobalKey<ScaffoldMesseng
 void main() {
   // Capture framework errors
   FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    if (kReleaseMode) {
+    if (kDebugMode) {
+      // In debug, we still want it in the console, but we don't want to 
+      // necessarily stop the custom ErrorWidget from rendering.
+      FlutterError.dumpErrorToConsole(details);
+    } else {
       // In release, we could log to server
     }
   };

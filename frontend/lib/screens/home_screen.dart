@@ -170,6 +170,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const CreateGroupScreen())),
           ),
+          
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () => Navigator.push(context,
