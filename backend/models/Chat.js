@@ -63,7 +63,16 @@ const Message = sequelize.define('Message', {
   status: { // sent, delivered, read
     type: DataTypes.ENUM('sent', 'delivered', 'read'),
     defaultValue: 'sent'
+  },
+  encryptionInfo: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      return this.getDataValue('content');
+    }
   }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 const Invite = sequelize.define('Invite', {

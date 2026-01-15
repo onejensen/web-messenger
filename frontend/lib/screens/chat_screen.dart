@@ -207,6 +207,63 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _showSecurityInfo(dynamic msg) {
+    final encryptionInfo = msg['encryptionInfo'];
+    String iv = 'Unknown';
+    String ciphertext = 'Unknown';
+    
+    if (encryptionInfo != null && encryptionInfo.contains(':')) {
+      final parts = encryptionInfo.split(':');
+      iv = parts[0];
+      ciphertext = parts[1];
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.lock, color: Colors.green),
+            SizedBox(width: 10),
+            Text('Encryption Details'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Algorithm: AES-256-CBC', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Divider(),
+              const Text('Initial Vector (IV):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                width: double.infinity,
+                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(4)),
+                child: SelectableText(iv, style: const TextStyle(fontFamily: 'monospace', fontSize: 10)),
+              ),
+              const SizedBox(height: 10),
+              const Text('Ciphertext:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                width: double.infinity,
+                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(4)),
+                child: SelectableText(ciphertext, style: const TextStyle(fontFamily: 'monospace', fontSize: 10)),
+              ),
+              const Divider(),
+              const Text('Note: This is the raw "Encryption at Rest" data as formatted in the SQLite/PostgreSQL database.', style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMessage(dynamic msg, bool isMe, String? query) {
     Widget content;
     if (msg['type'] == 'text') {
@@ -250,26 +307,31 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     return GestureDetector(
-      onLongPress: isMe ? () {
+      onLongPress: () {
          showModalBottomSheet(
            context: context,
            builder: (ctx) => Column(
              mainAxisSize: MainAxisSize.min,
              children: [
-               if(msg['type'] == 'text') ListTile(
+               if(isMe && msg['type'] == 'text') ListTile(
                  leading: const Icon(Icons.edit),
                  title: const Text('Edit'),
                  onTap: () { Navigator.pop(ctx); _showEditDialog(msg); },
                ),
-               ListTile(
+               if(isMe) ListTile(
                  leading: const Icon(Icons.delete, color: Colors.red),
                  title: const Text('Delete', style: TextStyle(color: Colors.red)),
                  onTap: () { Navigator.pop(ctx); _deleteMessage(msg['id']); },
                ),
+               ListTile(
+                 leading: const Icon(Icons.security, color: Colors.blue),
+                 title: const Text('Security Info'),
+                 onTap: () { Navigator.pop(ctx); _showSecurityInfo(msg); },
+               ),
              ],
            ),
          );
-      } : null,
+      },
       child: Align(
           alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
