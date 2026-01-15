@@ -141,6 +141,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return AppBar(
       title: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onDoubleTap: () {
           // Simulate a UI crash
           debugPrint('Simulating UI Crash...');
@@ -151,7 +152,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           debugPrint('Simulating Async Error...');
           Future.error('Simulated asynchronous exception for demonstration');
         },
-        child: const Text('Kood/Messenger'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: const Text('Kood/Sisu Messenger'),
+        ),
       ),
       bottom: isMobile
           ? const TabBar(

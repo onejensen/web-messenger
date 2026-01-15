@@ -103,7 +103,7 @@ class MyApp extends StatelessWidget {
           // Wrap with another error boundary if needed, but ErrorWidget.builder is global.
           return widget!;
         },
-        title: 'Kood/Messenger',
+        title: 'Kood/Sisu Messenger',
         debugShowCheckedModeBanner: false,
         theme: ThemeData.dark().copyWith(
           primaryColor: Colors.deepPurpleAccent,
