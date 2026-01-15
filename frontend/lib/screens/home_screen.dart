@@ -159,8 +159,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           icon: const Icon(Icons.bug_report, color: Colors.orangeAccent),
           tooltip: 'Test UI Crash',
           onPressed: () {
-            debugPrint('Simulating UI Crash...');
-            throw FlutterError('Simulated UI crash for demonstration');
+            debugPrint('Simulating UI Crash via State...');
+            setState(() {
+              _isCrashing = true;
+            });
           },
         ),
         IconButton(
@@ -168,7 +170,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           tooltip: 'Test Async Error',
           onPressed: () {
             debugPrint('Simulating Async Error...');
-            Future.error('Simulated asynchronous exception for demonstration');
+            // Manually trigger the error handler for immediate feedback
+            final error = 'Simulated asynchronous exception for demonstration';
+            PlatformDispatcher.instance.onError!(error, StackTrace.current);
           },
         ),
         IconButton(
