@@ -140,20 +140,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final chat = Provider.of<ChatProvider>(context, listen: false);
 
     return AppBar(
-      title: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      centerTitle: true,
+      title: InkWell(
         onDoubleTap: () {
-          // Simulate a UI crash
           debugPrint('Simulating UI Crash...');
           throw FlutterError('Simulated UI crash for demonstration');
         },
         onLongPress: () {
-          // Simulate an async error
           debugPrint('Simulating Async Error...');
           Future.error('Simulated asynchronous exception for demonstration');
         },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           child: const Text('Kood/Sisu Messenger'),
         ),
       ),
