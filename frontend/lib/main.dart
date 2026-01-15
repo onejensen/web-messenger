@@ -54,23 +54,17 @@ class RestartWidget extends StatefulWidget {
   const RestartWidget({super.key, required this.child});
 
   static void restartApp([BuildContext? context]) {
-    debugPrint('Restarting Application...');
-    if (kIsWeb) {
-      // In Web, a hard refresh is often the most stable way to recover from a build crash
-      // But we can try a soft restart first or just do a hard one for the demo
-      // For now, let's try the soft one via the static state
-      if (_state == null) {
-         debugPrint('Soft restart state not found, falling back to window.location.reload');
-         // This is a bit hacky but works for the demo on web
-         // In a real app we'd use a conditional import
+    debugPrint('Restarting Application requested...');
+    // Schedule restart for next microtask to avoid "tree locked" issues
+    Future.delayed(Duration.zero, () {
+      if (_state != null) {
+        debugPrint('RestartWidget: Executing soft restart via State');
+        _state!.restart();
+      } else {
+        debugPrint('RestartWidget: Executing hard restart via runApp');
+        runApp(const RestartWidget(child: MyApp()));
       }
-    }
-    
-    if (_state != null) {
-      _state!.restart();
-    } else if (context != null) {
-      context.findAncestorStateOfType<_RestartWidgetState>()?.restart();
-    }
+    });
   }
 
   static _RestartWidgetState? _state;
