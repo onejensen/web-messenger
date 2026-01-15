@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
-class GlobalErrorDisplay extends StatelessWidget {
+class GlobalErrorDisplay extends StatefulWidget {
   final FlutterErrorDetails? errorDetails;
   final VoidCallback onRetry;
 
@@ -9,6 +10,43 @@ class GlobalErrorDisplay extends StatelessWidget {
     this.errorDetails,
     required this.onRetry,
   });
+
+  @override
+  State<GlobalErrorDisplay> createState() => _GlobalErrorDisplayState();
+}
+
+class _GlobalErrorDisplayState extends State<GlobalErrorDisplay> {
+  int _countdown = 5;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startCountdown() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_countdown > 0) {
+          _countdown--;
+        } else {
+          timer.cancel();
+          widget.onRetry();
+        }
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +81,7 @@ class GlobalErrorDisplay extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'The messenger will now reload to the last stable state to ensure your security and data integrity.',
+                'The messenger will now reload automatically to the last stable state to ensure your security and data integrity.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -54,16 +92,16 @@ class GlobalErrorDisplay extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: onRetry,
+                  onPressed: widget.onRetry,
                   icon: const Icon(Icons.restore_rounded),
-                  label: const Text('Restore Messenger'),
+                  label: Text('Restore Messenger ($_countdown)'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurpleAccent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
               ),
-              if (errorDetails != null) ...[
+              if (widget.errorDetails != null) ...[
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () {
@@ -73,7 +111,7 @@ class GlobalErrorDisplay extends StatelessWidget {
                         title: const Text('Error Details'),
                         content: SingleChildScrollView(
                           child: Text(
-                            errorDetails.toString(),
+                            widget.errorDetails.toString(),
                             style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
                           ),
                         ),
